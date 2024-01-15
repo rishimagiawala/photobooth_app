@@ -26,6 +26,7 @@ class Reader(QThread):
         
 
         while True:
+            sleep(.1)
             data_ser = self.ser.read(1)
             data_ser += self.ser.read(self.ser.inWaiting())
             integer_value = int.from_bytes(data_ser) 

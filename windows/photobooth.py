@@ -6,7 +6,6 @@ import sys
 from modules.camera import CameraReader
 import cv2
 from modules.credit_card import Reader
-
 class PhotoboothWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -16,8 +15,11 @@ class PhotoboothWindow(QMainWindow):
    
         self.setWindowTitle("Photobooth Window")
         self.resize(300, 150)
-
-        self.image_label = QLabel("Images")
+        
+        self.image_label = QLabel("images")
+        self.im = QPixmap("not_ready.png")
+        self.image_label.setPixmap(self.im)
+        self.image_label.show()
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -29,7 +31,7 @@ class PhotoboothWindow(QMainWindow):
         # self.countBtn.clicked.connect(self.countClicks)
         self.longRunningBtn = QPushButton("Start Photobooth", self)
         self.longRunningBtn.clicked.connect(self.runPhotobooth)
-       
+    
         # Set the layout
         layout = QVBoxLayout()
         
@@ -73,6 +75,7 @@ class PhotoboothWindow(QMainWindow):
         self.thread = CameraReader()
         # connect its signal to the update_image slot
         self.thread.change_pixmap_signal.connect(self.update_image)
+        self.thread.finished.connect(self.thread.deleteLater)
         # start the thread
         self.thread.start()
         
