@@ -1,10 +1,10 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar
 from PySide6.QtCore import QObject, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtGui import QAction, QPixmap, QImage
 from time import sleep
 import sys
-from modules.camera import Camera
-
+from modules.camera import CameraReader
+import cv2
 from modules.credit_card import Reader
 
 class PhotoboothWindow(QMainWindow):
@@ -16,6 +16,9 @@ class PhotoboothWindow(QMainWindow):
    
         self.setWindowTitle("Photobooth Window")
         self.resize(300, 150)
+
+        self.image_label = QLabel("Images")
+        self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         # Create and connect widgets
@@ -25,22 +28,24 @@ class PhotoboothWindow(QMainWindow):
         # self.countBtn = QPushButton("Click me!", self)
         # self.countBtn.clicked.connect(self.countClicks)
         self.longRunningBtn = QPushButton("Start Photobooth", self)
+        self.longRunningBtn.clicked.connect(self.runPhotobooth)
        
         # Set the layout
         layout = QVBoxLayout()
         
-        
+        layout.addWidget(self.image_label)
         layout.addWidget(self.stepLabel)
         layout.addWidget(self.longRunningBtn)
+       
         self.centralWidget.setLayout(layout)
-        self.runLongTask()
+        self.runCredit()
 
    
 
-    def reportProgress(self, n):
+    def reportCreditProgress(self, n):
         self.stepLabel.setText(f"Credits Entered: {n}")
 
-    def runLongTask(self):
+    def runCredit(self):
         # Step 2: Create a QThread object
         self.thread = QThread()
         # Step 3: Create a worker object
@@ -52,7 +57,7 @@ class PhotoboothWindow(QMainWindow):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.reportProgress)
+        self.worker.progress.connect(self.reportCreditProgress)
         # Step 6: Start the thread
         self.thread.start()
 
@@ -64,4 +69,27 @@ class PhotoboothWindow(QMainWindow):
         self.thread.finished.connect(
             lambda: self.stepLabel.setText("Press Begin")
         )
+    def runPhotobooth(self):
+        self.thread = CameraReader()
+        # connect its signal to the update_image slot
+        self.thread.change_pixmap_signal.connect(self.update_image)
+        # start the thread
+        self.thread.start()
+        
+        
+       
+
+    def update_image(self, cv_img):
+        """Updates the image_label with a new opencv image"""
+        qt_img = self.convert_cv_qt(cv_img)
+        self.image_label.setPixmap(qt_img)
+    
+    def convert_cv_qt(self, cv_img):
+        """Convert from an opencv image to QPixmap"""
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        p = convert_to_Qt_format.scaled(600, 600, Qt.KeepAspectRatio)
+        return QPixmap.fromImage(p)
 

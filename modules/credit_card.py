@@ -16,24 +16,29 @@ class Reader(QThread):
         self.credit_amount = 3
         self.interval = 0.25
         self.console = None
-
+        self.credit_count = 0
     finished = Signal()
     progress = Signal(int)
 
 
     def run(self):
         """Long-running task."""
-        credit_count = 0
+        
 
         while True:
             data_ser = self.ser.read(1)
             data_ser += self.ser.read(self.ser.inWaiting())
             integer_value = int.from_bytes(data_ser) 
             if integer_value > 0 and integer_value < 256:
-                credit_count += 1
-                self.progress.emit(credit_count)
-            if credit_count == 3:
+                self.credit_count += 1
+                self.progress.emit(self.credit_count)
+            if self.credit_count == 3:
                 break
         self.quit()
         self.ser.close()
         self.finished.emit()
+
+    def removeCredits(self):
+        if self.credit_count >= 3:
+            self.credit_count -= 3
+    
