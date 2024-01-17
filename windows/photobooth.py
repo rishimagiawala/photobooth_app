@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar
 from PySide6.QtCore import QObject, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QPixmap, QImage
+from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage
 from time import sleep
 import sys
 from modules.camera import CameraReader
@@ -12,14 +12,13 @@ class PhotoboothWindow(QMainWindow):
         self.clicksCount = 0
         
        
-   
         self.setWindowTitle("Photobooth Window")
         self.resize(300, 150)
         
-        self.image_label = QLabel("images")
-        self.im = QPixmap("not_ready.png")
-        self.image_label.setPixmap(self.im)
-        self.image_label.show()
+        self.image_label = QLabel("Image Splash")
+        # self.im = QPixmap("notReady")
+        # self.image_label.setPixmap(self.im)
+       
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
@@ -41,6 +40,11 @@ class PhotoboothWindow(QMainWindow):
        
         self.centralWidget.setLayout(layout)
         self.runCredit()
+
+    # def closeEvent(self, event: QCloseEvent) -> None:
+    #     self.worker.deleteLater()
+    #     self.thread.quit()
+    #     return super().closeEvent(event)
 
    
 

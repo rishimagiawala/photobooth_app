@@ -69,12 +69,12 @@ class Dashboard(QMainWindow):
 
         button_action = QAction("Photobooth", self)
         button_action.setStatusTip("Begin Photobooth")
-        button_action.triggered.connect(self.onMyToolBarButtonClick)
+        button_action.triggered.connect(self.startPhotobooth)
         toolbar.addAction(button_action)
 
         button_action = QAction("Console", self)
         button_action.setStatusTip("Open Console")
-        button_action.triggered.connect(self.show_new_window)
+        button_action.triggered.connect(self.startPhotobooth)
         toolbar.addAction(button_action)
 
 
@@ -82,7 +82,7 @@ class Dashboard(QMainWindow):
     def onMyToolBarButtonClick(self, s):
         print("click", s)
     
-    def show_new_window(self, checked):
+    def startPhotobooth(self, checked):
         w = PhotoboothWindow()
         w.show()
 
