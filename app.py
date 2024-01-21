@@ -1,52 +1,24 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar
-from PySide6.QtCore import QObject, Qt, QThread, Signal
-from PySide6.QtGui import QAction, QPixmap, QImage
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
+from PySide6.QtGui import QAction, QPixmap, QImage, QTextCursor
+from PySide6.QtWidgets import QTextEdit, QSizePolicy
 from time import sleep
 import sys
 import cv2
 from modules.credit_card import Reader
 from windows.photobooth import PhotoboothWindow
-class CameraWindow(QWidget):
-    def __init__(self):
-        super(CameraWindow, self).__init__()
 
-        self.VBL = QVBoxLayout()
+# class OutputConsole(QTextEdit):
+#     def _init_(self):
+#         super(OutputConsole)
 
-        self.FeedLabel = QLabel()
-        self.VBL.addWidget(self.FeedLabel)
 
-        self.CancelBTN = QPushButton("Cancel")
-        self.CancelBTN.clicked.connect(self.CancelFeed)
-        self.VBL.addWidget(self.CancelBTN)
+class Stream(QThread):
+    newText = Signal(str)
 
-        self.Worker1 = Worker1()
+    def write(self, text):
+        self.newText.emit(str(text))
 
-        self.Worker1.start()
-        self.Worker1.ImageUpdate.connect(self.ImageUpdateSlot)
-        self.setLayout(self.VBL)
-
-    def ImageUpdateSlot(self, Image):
-        self.FeedLabel.setPixmap(QPixmap.fromImage(Image))
-
-    def CancelFeed(self):
-        self.Worker1.stop()
-
-class Worker1(QThread):
-    ImageUpdate = Signal(QImage)
-    def run(self):
-        self.ThreadActive = True
-        Capture = cv2.VideoCapture(0)
-        while self.ThreadActive:
-            ret, frame = Capture.read()
-            if ret:
-                Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                FlippedImage = cv2.flip(Image, 1)
-                ConvertToQtFormat = QImage(FlippedImage.data, FlippedImage.shape[1], FlippedImage.shape[0], QImage.Format_RGB888)
-                Pic = ConvertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
-                self.ImageUpdate.emit(Pic)
-    def stop(self):
-        self.quit()
-        self.ThreadActive = False
        
 
 
@@ -59,23 +31,39 @@ class Dashboard(QMainWindow):
 
         self.setWindowTitle("PhotoBooth Dashboard")
 
-        label = QLabel('Press "Begin PhotoBooth" ')
-        label.setAlignment(Qt.AlignCenter)
+        label = QLabel('Output Console')
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         self.setCentralWidget(label)
 
         toolbar = QToolBar("My main toolbar")
         self.addToolBar(toolbar)
 
-        button_action = QAction("Photobooth", self)
-        button_action.setStatusTip("Begin Photobooth")
+        button_action = QAction("Show Viewer", self)
+        button_action.setStatusTip("Show Photobooth Viewer")
         button_action.triggered.connect(self.startPhotobooth)
         toolbar.addAction(button_action)
 
-        button_action = QAction("Console", self)
-        button_action.setStatusTip("Open Console")
+        button_action = QAction("Take Picture", self)
+        button_action.setStatusTip("Take Picture")
         button_action.triggered.connect(self.startPhotobooth)
         toolbar.addAction(button_action)
+
+        self.text_edit_console = QTextEdit(self)
+        self.text_edit_console.setSizePolicy(
+           QSizePolicy.MinimumExpanding,
+            QSizePolicy.MinimumExpanding
+        )
+
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(self.text_edit_console)
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+        sys.stdout = Stream(newText=self.onUpdateText)
+        print("Hey")
+
 
 
 
@@ -83,9 +71,16 @@ class Dashboard(QMainWindow):
         print("click", s)
     
     def startPhotobooth(self, checked):
-        w = PhotoboothWindow()
-        w.show()
+        # w = PhotoboothWindow()nigger
+        # w.show()
+        print("[6:25:00pm] Loaded configuration.")
 
+    def onUpdateText(self, text):
+        cursor = self.text_edit_console.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(text)
+        self.text_edit_console.setTextCursor(cursor)
+        self.text_edit_console.ensureCursorVisible()
 
 
 app = QApplication(sys.argv)

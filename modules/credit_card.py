@@ -11,6 +11,7 @@ class Reader(QThread):
         # Initialize instance variables in the __init__ method
         self.port = 'COM3'
         self.baudrate = 9600
+        
         self.ser = serial.Serial(self.port, self.baudrate, timeout=0.001)
         self.credit = 0
         self.credit_amount = 3

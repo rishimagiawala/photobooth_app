@@ -7,6 +7,9 @@ import cv2
 import numpy as np
 class CameraReader(QThread):
     change_pixmap_signal = Signal(np.ndarray)
+    ret = None
+    cv_img = None
+
 
     def run(self):
         # capture from web cam
@@ -15,4 +18,8 @@ class CameraReader(QThread):
             ret, cv_img = cap.read()
             if ret:
                 self.change_pixmap_signal.emit(cv_img)
-        
+
+    def takePhotos(self, num_of_photos = 4):
+        pass
+
+    
