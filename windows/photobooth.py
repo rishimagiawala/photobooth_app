@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage
 from time import sleep
@@ -15,11 +15,15 @@ class PhotoboothWindow(QMainWindow):
         self.setWindowTitle("Photobooth Window")
         self.resize(300, 150)
         
-        self.image_label = QLabel("Image Splash")
-        # self.im = QPixmap("notReady")
-        # self.image_label.setPixmap(self.im)
+        self.image_label = QLabel()
+        self.im = QPixmap("not_ready")
+        self.image_label.setPixmap(self.im)
        
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+        self.image_label.setSizePolicy(
+           QSizePolicy.MinimumExpanding,
+            QSizePolicy.MinimumExpanding
+        )
         self.centralWidget = QWidget()
         self.setCentralWidget(self.centralWidget)
         # Create and connect widgets

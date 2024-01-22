@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QTextEdit, QSizePolicy
 from time import sleep
 import sys
 import cv2
+from modules.camera import CameraReader
 from modules.credit_card import Reader
 from windows.photobooth import PhotoboothWindow
 
@@ -62,7 +63,12 @@ class Dashboard(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
         sys.stdout = Stream(newText=self.onUpdateText)
-        print("Hey")
+        # print("Hey")
+
+        #Starting Camera
+        self.cameraThread = CameraReader()
+        self.cameraThread.start()
+       
 
 
 
@@ -71,8 +77,9 @@ class Dashboard(QMainWindow):
         print("click", s)
     
     def startPhotobooth(self, checked):
-        # w = PhotoboothWindow()nigger
-        # w.show()
+        w = PhotoboothWindow()
+        w.showMaximized()
+        w.showFullScreen()
         print("[6:25:00pm] Loaded configuration.")
 
     def onUpdateText(self, text):
