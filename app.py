@@ -8,6 +8,7 @@ import cv2
 from modules.camera import CameraReader
 from modules.credit_card import Reader
 from windows.photobooth import PhotoboothWindow
+from windows.viewer import Viewer
 
 # class OutputConsole(QTextEdit):
 #     def _init_(self):
@@ -29,6 +30,8 @@ class Dashboard(QMainWindow):
 
     def __init__(self):
         super(Dashboard, self).__init__()
+        self.w = None
+        self.current_img = None
 
         self.setWindowTitle("PhotoBooth Dashboard")
 
@@ -42,12 +45,12 @@ class Dashboard(QMainWindow):
 
         button_action = QAction("Show Viewer", self)
         button_action.setStatusTip("Show Photobooth Viewer")
-        button_action.triggered.connect(self.startPhotobooth)
+        button_action.triggered.connect(self.startViewer)
         toolbar.addAction(button_action)
 
         button_action = QAction("Take Picture", self)
         button_action.setStatusTip("Take Picture")
-        button_action.triggered.connect(self.startPhotobooth)
+        button_action.triggered.connect(self.startViewer)
         toolbar.addAction(button_action)
 
         self.text_edit_console = QTextEdit(self)
@@ -68,6 +71,7 @@ class Dashboard(QMainWindow):
         #Starting Camera
         self.cameraThread = CameraReader()
         self.cameraThread.start()
+        self.cameraThread.change_pixmap_signal.connect(self.updateCurrentImg)
        
 
 
@@ -76,11 +80,11 @@ class Dashboard(QMainWindow):
     def onMyToolBarButtonClick(self, s):
         print("click", s)
     
-    def startPhotobooth(self, checked):
-        w = PhotoboothWindow()
-        w.showMaximized()
-        w.showFullScreen()
-        print("[6:25:00pm] Loaded configuration.")
+    def startViewer(self):
+       
+        self.w = Viewer()
+        self.w.show()
+        print("Loaded configuration.")
 
     def onUpdateText(self, text):
         cursor = self.text_edit_console.textCursor()
@@ -88,6 +92,13 @@ class Dashboard(QMainWindow):
         cursor.insertText(text)
         self.text_edit_console.setTextCursor(cursor)
         self.text_edit_console.ensureCursorVisible()
+    def updateCurrentImg(self,img):
+        self.current_img = img
+        if self.w is not None:
+            self.w.startImageStream(image=self.current_img)
+
+    
+
 
 
 app = QApplication(sys.argv)

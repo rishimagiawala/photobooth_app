@@ -9,7 +9,7 @@ class Reader(QThread):
         super().__init__()
 
         # Initialize instance variables in the __init__ method
-        self.port = 'COM4'
+        self.port = 'COM3'
         self.baudrate = 9600
         
         try:
@@ -35,10 +35,11 @@ class Reader(QThread):
             data_ser += self.ser.read(self.ser.inWaiting())
             integer_value = int.from_bytes(data_ser) 
             if integer_value > 0 and integer_value < 256:
-                print("Credits Added: " + str(self.credit_count) + "/4")
+                
                 self.credit_count += 1
+                print("Credits Added: " + str(self.credit_count) + "/4")
                 self.progress.emit(self.credit_count)
-            if self.credit_count == 3:
+            if self.credit_count == 7:
                 break
         self.quit()
         self.ser.close()

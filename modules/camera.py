@@ -9,7 +9,7 @@ import numpy as np
 class CameraReader(QThread):
     def __init__(self):
         super().__init__()
-        self.change_pixmap_signal = Signal(np.ndarray)
+        
         print("Starting Camera")
         try:
 
@@ -21,7 +21,7 @@ class CameraReader(QThread):
         self.ret = None
         self.cv_img = None
 
-    
+    change_pixmap_signal = Signal(np.ndarray)
 
 
     def run(self):
@@ -30,8 +30,10 @@ class CameraReader(QThread):
         while True:
             self.ret, self.cv_img = self.cap.read()
             if self.ret:
-                pass
-                # print("Currently Printing Images")
+                self.change_pixmap_signal.emit(self.cv_img)
+                
+            
+    
                 
 
     
