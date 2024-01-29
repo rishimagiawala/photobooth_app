@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint
 from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage
 from time import sleep
 import sys
@@ -20,13 +20,14 @@ class Viewer(QMainWindow):
         self.image_label = QLabel()
         self.im = QPixmap("not_ready")
         self.image_label.setPixmap(self.im)
-       
+        
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.image_label.setScaledContents(True)
         self.centralWidget = self.image_label
         self.setCentralWidget(self.centralWidget)
-
-
+        self.countdown_label = QLabel(self.image_label)
+        self.countdown_label.setScaledContents(True)
+        self.countdown_label.resize(100,100)
     def mouseDoubleClickEvent(self, e):
         print("Booth Session Begun")
         self.takePhotos()
@@ -34,6 +35,7 @@ class Viewer(QMainWindow):
         self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile)
         self.photoThread.start()
         self.photoThread.change_pixmap_signal.connect(self.updateImage)
+        self.photoThread.change_count_signal.connect(self.updateCountImage)
     def updateImage(self,image):
         self.image_label.setPixmap(image)
     def startImageStream(self, image):
@@ -48,7 +50,8 @@ class Viewer(QMainWindow):
         filename = f'./photos/image_{timestamp}.jpg'
         cv2.imwrite(filename,self.camImage)
         print("Picture Taken")
-        
+    def updateCountImage(self, image):
+        self.countdown_label.setPixmap(image)
         
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""

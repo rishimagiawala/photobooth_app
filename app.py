@@ -7,6 +7,7 @@ import sys
 import cv2
 from modules.camera import CameraReader
 from modules.credit_card import Reader
+from modules.printer import Printer
 from windows.photobooth import PhotoboothWindow
 from windows.viewer import Viewer
 
@@ -73,7 +74,9 @@ class Dashboard(QMainWindow):
         self.cameraThread.start()
         self.cameraThread.change_pixmap_signal.connect(self.updateCurrentImg)
        
-       
+        self.printerThread = Printer()
+        self.printerThread.start()
+
 
 
 

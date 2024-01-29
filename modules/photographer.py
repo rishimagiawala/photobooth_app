@@ -14,6 +14,7 @@ class Photographer(QThread):
         self.takePicture = callbackTakePicture
 
     change_pixmap_signal = Signal(QPixmap)
+    change_count_signal = Signal(QPixmap)
 
 
     def run(self):
@@ -27,15 +28,37 @@ class Photographer(QThread):
         self.change_pixmap_signal.emit(im)
         sleep(1)
         self.toggleCamStream()
+        self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-1.png'))
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-1.png'))
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-1.png'))
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+        sleep(1)
+        self.change_count_signal.emit(QPixmap('countdown-1.png'))
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.toggleCamStream()
+        self.change_pixmap_signal.emit(QPixmap('msg_finished.png'))
         
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.takePicture()
 
         
             

@@ -85,6 +85,12 @@ def printImages(image_arr):
         dib.draw (hDC.GetHandleOutput (), ((409*i)+ marginy,rx+25, 409*i + 409, int(printer_size[1]/2)-25))
         dib.draw (hDC.GetHandleOutput (), ((409*i)+ marginy,int(printer_size[1]/2)+25, 409*i + 409, int(printer_size[1])))
         os.remove(image_arr[i])
+    bmp = Image.open ('./assets/images/westside-motor-lounge.png')
+    # if bmp.size[0] > bmp.size[1]:
+    #         bmp = bmp.rotate (90)
+    dib = ImageWin.Dib (bmp)
+    dib.draw (hDC.GetHandleOutput (), ((409*5)+ marginy,rx+25, 409*5 + 205, int(printer_size[1]/2)-25))
+    dib.draw (hDC.GetHandleOutput (), ((409*5)+ marginy,int(printer_size[1]/2)+25, 409*5 + 205, int(printer_size[1])))
 
     # dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]/2), int(printer_size[1]/2)))
 
