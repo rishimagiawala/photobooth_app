@@ -8,9 +8,10 @@ import serial, sys, time
 import cv2
 import numpy as np
 class Photographer(QThread):
-    def __init__(self, callback):
+    def __init__(self, callbackCam, callbackTakePicture):
         super().__init__()
-        self.callback = callback
+        self.toggleCamStream = callbackCam
+        self.takePicture = callbackTakePicture
 
     change_pixmap_signal = Signal(QPixmap)
 
@@ -25,8 +26,17 @@ class Photographer(QThread):
         im = QPixmap("countdown-0")
         self.change_pixmap_signal.emit(im)
         sleep(1)
-        self.callback()
-        print("Pictures Taken")
+        self.toggleCamStream()
+        
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.takePicture()
+        sleep(1)
+        self.takePicture()
+
         
             
     def take_picture(self):

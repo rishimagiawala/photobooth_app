@@ -7,13 +7,14 @@ from modules.camera import CameraReader
 import cv2
 from modules.credit_card import Reader
 from modules.photographer import Photographer
+from datetime import datetime
 
 class Viewer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.clicksCount = 0
         self.showingCam = False
-       
+        self.camImage = None
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
         self.image_label = QLabel()
@@ -30,17 +31,23 @@ class Viewer(QMainWindow):
         print("Booth Session Begun")
         self.takePhotos()
     def takePhotos(self, numOfPhotos = 2):
-        self.photoThread = Photographer(self.toggleShowingCam)
+        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile)
         self.photoThread.start()
         self.photoThread.change_pixmap_signal.connect(self.updateImage)
     def updateImage(self,image):
         self.image_label.setPixmap(image)
     def startImageStream(self, image):
+        self.camImage = image
         if self.showingCam is True:
             qt_img = self.convert_cv_qt(image)
             self.image_label.setPixmap(qt_img)
     def toggleShowingCam(self):
         self.showingCam =  not (self.showingCam)
+    def saveImageToFile(self):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f'./photos/image_{timestamp}.jpg'
+        cv2.imwrite(filename,self.camImage)
+        print("Picture Taken")
         
         
     def convert_cv_qt(self, cv_img):

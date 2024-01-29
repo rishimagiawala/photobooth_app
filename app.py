@@ -73,6 +73,7 @@ class Dashboard(QMainWindow):
         self.cameraThread.start()
         self.cameraThread.change_pixmap_signal.connect(self.updateCurrentImg)
        
+       
 
 
 
