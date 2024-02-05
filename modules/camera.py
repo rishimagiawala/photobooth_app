@@ -13,7 +13,7 @@ class CameraReader(QThread):
         print("Starting Camera")
         try:
 
-            self.cap = cv2.VideoCapture(0)
+            self.cap = cv2.VideoCapture(1)
         
         except:
             print("Camera Startup Failed")
@@ -21,7 +21,7 @@ class CameraReader(QThread):
         self.ret = None
         self.cv_img = None
 
-    change_pixmap_signal = Signal(np.ndarray)
+    image_signal = Signal(np.ndarray)
 
 
     def run(self):
@@ -30,7 +30,7 @@ class CameraReader(QThread):
         while True:
             self.ret, self.cv_img = self.cap.read()
             if self.ret:
-                self.change_pixmap_signal.emit(self.cv_img)
+                self.image_signal.emit(self.cv_img)
                 
             
     

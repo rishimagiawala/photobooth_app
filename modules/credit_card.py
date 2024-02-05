@@ -17,12 +17,12 @@ class Reader(QThread):
         except:
             pass
         self.credit = 0
-        self.credit_amount = 3
+        self.credit_amount = 5
         self.interval = 0.25
         self.console = None
         self.credit_count = 0
-    finished = Signal()
-    progress = Signal(int)
+    begin_session = Signal()
+    
 
 
     def run(self):
@@ -30,17 +30,19 @@ class Reader(QThread):
         
 
         while True:
-            sleep(.1)
-            data_ser = self.ser.read(1)
-            data_ser += self.ser.read(self.ser.inWaiting())
-            integer_value = int.from_bytes(data_ser) 
-            if integer_value > 0 and integer_value < 256:
+            data = self.ser.read(1)
+            data += self.ser.read(self.ser.inWaiting())
+            integer_value = int.from_bytes(data) 
+            # print(data)
+            if len(data) > 0:
+                self.credit +=1
+                print(str(self.credit) + ' Tokens' + ' | Number ' + str(integer_value) + ' | Data ' + str(data))
+            if self.credit == self.credit_amount:
+
+                self.credit = 0
                 
-                self.credit_count += 1
-                print("Credits Added: " + str(self.credit_count) + "/4")
-                self.progress.emit(self.credit_count)
-            if self.credit_count == 7:
-                break
+                self.begin_session.emit()
+
         self.quit()
         self.ser.close()
         self.finished.emit()

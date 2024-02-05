@@ -8,73 +8,97 @@ import serial, sys, time
 import cv2
 import numpy as np
 class Photographer(QThread):
-    def __init__(self, callbackCam, callbackTakePicture):
+    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue):
         super().__init__()
+        self.getQueueCount = getQueueCount
+        self.popFromQueue = popFromQueue
         self.toggleCamStream = callbackCam
         self.takePicture = callbackTakePicture
 
-    change_pixmap_signal = Signal(QPixmap)
+    change_image_signal = Signal(QPixmap)
     change_count_signal = Signal(QPixmap)
 
 
     def run(self):
-        # capture from web cam
-       
-        im = QPixmap("msg_start")
-        self.change_pixmap_signal.emit(im)
 
-        sleep(2)
-        im = QPixmap("countdown-0")
-        self.change_pixmap_signal.emit(im)
-        sleep(1)
-        self.toggleCamStream()
-        self.change_count_signal.emit(QPixmap('countdown-2.png'))
 
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-1.png'))
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-2.png'))
 
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-1.png'))
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-2.png'))
 
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-1.png'))
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-2.png'))
+        im = QPixmap("not_ready")
+        self.change_image_signal.emit(im)
 
-        sleep(1)
-        self.change_count_signal.emit(QPixmap('countdown-1.png'))
-        sleep(1)
-        self.takePicture()
-        sleep(1)
-        self.toggleCamStream()
-        self.change_pixmap_signal.emit(QPixmap('msg_finished.png'))
+        while True:
+            current_queue_count = self.getQueueCount()
+            if current_queue_count > 0:
+                im = QPixmap("msg_start")
+                self.change_image_signal.emit(im)
+
+                sleep(2)
+                
+                self.toggleCamStream(True)
+                self.change_count_signal.emit(QPixmap('countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                sleep(1)
+                self.toggleCamStream(False)
+                self.change_image_signal.emit(QPixmap('msg_finished.png'))
+                sleep(2)
+                self.popFromQueue()
+
+                if self.getQueueCount() == 0:
+                    self.change_count_signal.emit(QPixmap())
+                    im = QPixmap("not_ready")
+                    self.change_image_signal.emit(im)
+           
         
 
         
             
-    def take_picture(self):
-        return self.cv_img
+    # def take_picture(self):
+    #     return self.cv_img
                 
-    def update_image(self, cv_img):
-        """Updates the image_label with a new opencv image"""
-        qt_img = self.convert_cv_qt(cv_img)
-        self.image_label.setPixmap(qt_img)
+    # def update_image(self, cv_img):
+    #     """Updates the image_label with a new opencv image"""
+    #     qt_img = self.convert_cv_qt(cv_img)
+    #     self.image_label.setPixmap(qt_img)
     
-    def convert_cv_qt(self, cv_img):
-        """Convert from an opencv image to QPixmap"""
-        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        h, w, ch = rgb_image.shape
-        bytes_per_line = ch * w
-        convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        p = convert_to_Qt_format.scaled(600, 600, Qt.KeepAspectRatio)
-        return QPixmap.fromImage(p)
+    # def convert_cv_qt(self, cv_img):
+    #     """Convert from an opencv image to QPixmap"""
+    #     rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    #     h, w, ch = rgb_image.shape
+    #     bytes_per_line = ch * w
+    #     convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    #     p = convert_to_Qt_format.scaled(600, 600, Qt.KeepAspectRatio)
+    #     return QPixmap.fromImage(p)

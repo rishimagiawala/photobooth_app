@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar
+from datetime import datetime
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
-from PySide6.QtGui import QAction, QPixmap, QImage, QTextCursor
+from PySide6.QtGui import QAction, QPixmap, QImage, QTextCursor, QColor, QPalette
 from PySide6.QtWidgets import QTextEdit, QSizePolicy
 from time import sleep
 import sys
@@ -14,6 +16,17 @@ from windows.viewer import Viewer
 # class OutputConsole(QTextEdit):
 #     def _init_(self):
 #         super(OutputConsole)
+
+class Color(QWidget):
+
+    def __init__(self, color):
+        super(Color, self).__init__()
+        self.setAutoFillBackground(True)
+
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(color))
+        self.setPalette(palette)
+
 
 
 class Stream(QThread):
@@ -33,6 +46,9 @@ class Dashboard(QMainWindow):
         super(Dashboard, self).__init__()
         self.w = None
         self.current_img = None
+        self.queue = 0
+
+
 
         self.setWindowTitle("PhotoBooth Dashboard")
 
@@ -51,18 +67,17 @@ class Dashboard(QMainWindow):
 
         button_action = QAction("Take Picture", self)
         button_action.setStatusTip("Take Picture")
-        button_action.triggered.connect(self.startViewer)
+        button_action.triggered.connect(self.saveImageToFile)
         toolbar.addAction(button_action)
 
         self.text_edit_console = QTextEdit(self)
-        self.text_edit_console.setSizePolicy(
-           QSizePolicy.MinimumExpanding,
-            QSizePolicy.MinimumExpanding
-        )
+        
+      
 
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.text_edit_console)
+        
         widget = QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
@@ -72,40 +87,63 @@ class Dashboard(QMainWindow):
         #Starting Camera
         self.cameraThread = CameraReader()
         self.cameraThread.start()
-        self.cameraThread.change_pixmap_signal.connect(self.updateCurrentImg)
+        self.cameraThread.image_signal.connect(self.updateCurrentImage)
        
+       #Starting Printer    
         self.printerThread = Printer()
         self.printerThread.start()
 
+        #Starting Credit Card Thread
+        self.cardThread = Reader()
+        self.cardThread.start()
+        self.cardThread.begin_session.connect(self.addToQueue)
 
 
 
+    
+    def saveImageToFile(self):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f'./photos/image_{timestamp}.jpg'
+        cv2.imwrite(filename,self.current_img)
+        print("Picture Taken")
 
-    def onMyToolBarButtonClick(self, s):
-        print("click", s)
     
     def startViewer(self):
        
-        self.w = Viewer()
+        self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount)
         self.w.show()
-        print("Loaded configuration.")
 
+    
+    def updateCurrentImage(self,image):
+        self.current_img = image
+        if self.w is not None:
+            self.w.updateViewerCamImage(image=self.current_img)
+
+    #This code has to do with updating the output console, please do not touch, PyQt 5
     def onUpdateText(self, text):
         cursor = self.text_edit_console.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(text)
         self.text_edit_console.setTextCursor(cursor)
         self.text_edit_console.ensureCursorVisible()
-    def updateCurrentImg(self,img):
-        self.current_img = img
-        if self.w is not None:
-            self.w.startImageStream(image=self.current_img)
 
-    
-
+    def addToQueue(self):
+        self.queue += 1
+        print("Queue Count: " + str(self.queue))
+    def popFromQueue(self):
+        if self.queue > 0:
+            self.queue -= 1
+        else:
+            self.queue = 0
+        print("Queue Count: " + str(self.queue))
+    def getQueueCount(self):
+        return self.queue
+        
 
 
 app = QApplication(sys.argv)
 w = Dashboard()
 w.show()
 app.exec()
+
+

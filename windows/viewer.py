@@ -10,11 +10,17 @@ from modules.photographer import Photographer
 from datetime import datetime
 
 class Viewer(QMainWindow):
-    def __init__(self):
+    def __init__(self, addToQueue, popFromQueue, getQueueCount):
         super().__init__()
-        self.clicksCount = 0
+    
+        print("Viewer Started")
+        self.addToQueue = addToQueue
+        self.popFromQueue = popFromQueue
+        self.getQueueCount = getQueueCount
+      
         self.showingCam = False
         self.camImage = None
+
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
         self.image_label = QLabel()
@@ -28,23 +34,26 @@ class Viewer(QMainWindow):
         self.countdown_label = QLabel(self.image_label)
         self.countdown_label.setScaledContents(True)
         self.countdown_label.resize(100,100)
-    def mouseDoubleClickEvent(self, e):
-        print("Booth Session Begun")
-        self.takePhotos()
-    def takePhotos(self, numOfPhotos = 2):
-        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile)
+
+        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue)
         self.photoThread.start()
-        self.photoThread.change_pixmap_signal.connect(self.updateImage)
+        self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
+
+    def mouseDoubleClickEvent(self, e):
+        self.addToQueue()
+   
     def updateImage(self,image):
         self.image_label.setPixmap(image)
-    def startImageStream(self, image):
+
+
+    def updateViewerCamImage(self, image):
         self.camImage = image
         if self.showingCam is True:
             qt_img = self.convert_cv_qt(image)
             self.image_label.setPixmap(qt_img)
-    def toggleShowingCam(self):
-        self.showingCam =  not (self.showingCam)
+    def toggleShowingCam(self, toggle):
+        self.showingCam =  toggle
     def saveImageToFile(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f'./photos/image_{timestamp}.jpg'
