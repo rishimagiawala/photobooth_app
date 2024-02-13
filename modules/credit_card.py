@@ -17,7 +17,7 @@ class Reader(QThread):
         except:
             pass
         self.credit = 0
-        self.credit_amount = 5
+        self.credit_amount = 7
         self.interval = 0.25
         self.console = None
         self.credit_count = 0

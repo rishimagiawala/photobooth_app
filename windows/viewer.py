@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint
-from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage
+from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QDesktopServices
 from time import sleep
 import sys
 from modules.camera import CameraReader
@@ -12,19 +12,27 @@ from datetime import datetime
 class Viewer(QMainWindow):
     def __init__(self, addToQueue, popFromQueue, getQueueCount):
         super().__init__()
-    
+
         print("Viewer Started")
+        width = self.frameGeometry().width()
+        height = self.frameGeometry().height()
+        print(width)
+        print(height)
+
+         
+
         self.addToQueue = addToQueue
         self.popFromQueue = popFromQueue
         self.getQueueCount = getQueueCount
       
         self.showingCam = False
         self.camImage = None
+        self.takenImage = QPixmap()
 
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
         self.image_label = QLabel()
-        self.im = QPixmap("not_ready")
+        self.im = QPixmap("./assets/images/viewer/not_ready")
         self.image_label.setPixmap(self.im)
         
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
@@ -34,8 +42,9 @@ class Viewer(QMainWindow):
         self.countdown_label = QLabel(self.image_label)
         self.countdown_label.setScaledContents(True)
         self.countdown_label.resize(100,100)
+        self.countdown_label.move(960, 900) 
 
-        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue)
+        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue, self.getTakenImage)
         self.photoThread.start()
         self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
@@ -51,6 +60,7 @@ class Viewer(QMainWindow):
         self.camImage = image
         if self.showingCam is True:
             qt_img = self.convert_cv_qt(image)
+            self.takenImage = qt_img
             self.image_label.setPixmap(qt_img)
     def toggleShowingCam(self, toggle):
         self.showingCam =  toggle
@@ -61,6 +71,8 @@ class Viewer(QMainWindow):
         print("Picture Taken")
     def updateCountImage(self, image):
         self.countdown_label.setPixmap(image)
+    def getTakenImage(self):
+        return self.takenImage
         
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""

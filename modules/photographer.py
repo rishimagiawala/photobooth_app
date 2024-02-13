@@ -8,12 +8,13 @@ import serial, sys, time
 import cv2
 import numpy as np
 class Photographer(QThread):
-    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue):
+    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage):
         super().__init__()
         self.getQueueCount = getQueueCount
         self.popFromQueue = popFromQueue
         self.toggleCamStream = callbackCam
         self.takePicture = callbackTakePicture
+        self.getTakenImage = getTakenImage
 
     change_image_signal = Signal(QPixmap)
     change_count_signal = Signal(QPixmap)
@@ -24,62 +25,93 @@ class Photographer(QThread):
 
 
 
-        im = QPixmap("not_ready")
+        im = QPixmap("./assets/images/viewer/not_ready")
         self.change_image_signal.emit(im)
 
         while True:
             current_queue_count = self.getQueueCount()
             if current_queue_count > 0:
-                im = QPixmap("msg_start")
+                im = QPixmap("./assets/images/viewer/msg_start")
                 self.change_image_signal.emit(im)
 
                 sleep(2)
                 
                 self.toggleCamStream(True)
-                self.change_count_signal.emit(QPixmap('countdown-3.png'))
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-5.png'))
                 sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-2.png'))
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-4.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-2.png'))
 
                 sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-1.png'))
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-1.png'))
                 sleep(1)
                 self.takePicture()
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-3.png'))
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-2.png'))
-
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-1.png'))
-                sleep(1)
-                self.takePicture()
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-3.png'))
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-2.png'))
-
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-1.png'))
-                sleep(1)
-                self.takePicture()
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-3.png'))
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-2.png'))
-
-                sleep(1)
-                self.change_count_signal.emit(QPixmap('countdown-1.png'))
-                sleep(1)
-                self.takePicture()
-                sleep(1)
+                self.change_count_signal.emit(QPixmap(''))
                 self.toggleCamStream(False)
-                self.change_image_signal.emit(QPixmap('msg_finished.png'))
+                sleep(2)
+                self.toggleCamStream(True)
+
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-5.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-4.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                self.change_count_signal.emit(QPixmap(''))
+                self.toggleCamStream(False)
+                sleep(2)
+                self.toggleCamStream(True)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-5.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-4.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                self.change_count_signal.emit(QPixmap(''))
+                self.toggleCamStream(False)
+                sleep(2)
+                self.toggleCamStream(True)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-5.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-4.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-3.png'))
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-2.png'))
+
+                sleep(1)
+                self.change_count_signal.emit(QPixmap('./assets/images/viewer/countdown-1.png'))
+                sleep(1)
+                self.takePicture()
+                self.change_count_signal.emit(QPixmap(''))
+                self.toggleCamStream(False)
+                sleep(2)
+                
+    
+                self.toggleCamStream(False)
+                self.change_count_signal.emit(QPixmap())
+                self.change_image_signal.emit(QPixmap('./assets/images/viewer/msg_finished.png'))
                 sleep(2)
                 self.popFromQueue()
 
                 if self.getQueueCount() == 0:
                     self.change_count_signal.emit(QPixmap())
-                    im = QPixmap("not_ready")
+                    im = QPixmap("./assets/images/viewer/not_ready")
                     self.change_image_signal.emit(im)
            
         

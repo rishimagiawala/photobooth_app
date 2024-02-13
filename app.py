@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
@@ -10,8 +11,11 @@ import cv2
 from modules.camera import CameraReader
 from modules.credit_card import Reader
 from modules.printer import Printer
+from windows.layout import LayoutWindow
 from windows.photobooth import PhotoboothWindow
 from windows.viewer import Viewer
+import webbrowser
+
 
 # class OutputConsole(QTextEdit):
 #     def _init_(self):
@@ -45,6 +49,7 @@ class Dashboard(QMainWindow):
     def __init__(self):
         super(Dashboard, self).__init__()
         self.w = None
+        self.layoutWindow = None
         self.current_img = None
         self.queue = 0
 
@@ -70,6 +75,22 @@ class Dashboard(QMainWindow):
         button_action.triggered.connect(self.saveImageToFile)
         toolbar.addAction(button_action)
 
+        button_action = QAction("Reset Credits", self)
+        button_action.setStatusTip("Reset credits")
+        button_action.triggered.connect(self.resetQueueCount)
+        toolbar.addAction(button_action)
+
+
+
+        button_action = QAction("Edit Layout Configuration", self)
+        button_action.setStatusTip("Edit layout")
+        button_action.triggered.connect(self.openLayoutEditor)
+        
+
+        menu = self.menuBar()
+        config_menu = menu.addMenu("Configuration")
+        config_menu.addAction(button_action)
+
         self.text_edit_console = QTextEdit(self)
         
       
@@ -82,7 +103,6 @@ class Dashboard(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
         sys.stdout = Stream(newText=self.onUpdateText)
-        # print("Hey")
 
         #Starting Camera
         self.cameraThread = CameraReader()
@@ -119,7 +139,7 @@ class Dashboard(QMainWindow):
         if self.w is not None:
             self.w.updateViewerCamImage(image=self.current_img)
 
-    #This code has to do with updating the output console, please do not touch, PyQt 5
+    #This function has to do with updating the output console
     def onUpdateText(self, text):
         cursor = self.text_edit_console.textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -138,6 +158,14 @@ class Dashboard(QMainWindow):
         print("Queue Count: " + str(self.queue))
     def getQueueCount(self):
         return self.queue
+    def resetQueueCount(self):
+        self.queue = 0
+        print("Queue Reset")
+
+    def openLayoutEditor(self):
+        self.layoutWindow = LayoutWindow()
+        self.layoutWindow.show()
+        
         
 
 

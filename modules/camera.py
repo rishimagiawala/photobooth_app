@@ -13,7 +13,7 @@ class CameraReader(QThread):
         print("Starting Camera")
         try:
 
-            self.cap = cv2.VideoCapture(1)
+            self.cap = cv2.VideoCapture(0)
         
         except:
             print("Camera Startup Failed")
