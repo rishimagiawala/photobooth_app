@@ -1,10 +1,1 @@
-{
-    "image_height" : 350,
-    "logo_height" : 300,
-    "marginy": 25,
-    "marginx": 10,
-    "logo_path": "./assets/images/logos/WML_NameOnly_Yellow.png",
-    "logo_rotate": true,
-    "image_marginy": 25,
-    "image_marginx": 20
-  }
+{"image_height": 350, "logo_height": 330, "marginy": 25, "marginx": 0, "logo_path": "./assets/images/logos/Cocos.png", "logo_rotate": true, "image_marginy": 25, "image_marginx": 0, "num_of_photos": 4, "logo_position": 0}

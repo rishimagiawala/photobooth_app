@@ -7,6 +7,7 @@ from time import sleep
 import serial, sys, time
 import cv2
 import numpy as np
+import os
 class Photographer(QThread):
     def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage):
         super().__init__()
@@ -29,6 +30,7 @@ class Photographer(QThread):
         self.change_image_signal.emit(im)
 
         while True:
+
             current_queue_count = self.getQueueCount()
             if current_queue_count > 0:
                 im = QPixmap("./assets/images/viewer/msg_start")

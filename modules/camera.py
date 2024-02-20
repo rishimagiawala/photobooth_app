@@ -10,7 +10,7 @@ class CameraReader(QThread):
     def __init__(self):
         super().__init__()
         
-        print("Starting Camera")
+        print("Camera Module Started")
         try:
 
             self.cap = cv2.VideoCapture(0)

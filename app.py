@@ -80,6 +80,11 @@ class Dashboard(QMainWindow):
         button_action.triggered.connect(self.resetQueueCount)
         toolbar.addAction(button_action)
 
+        button_action = QAction("Print Count", self)
+        button_action.setStatusTip("Show Print Counts")
+        button_action.triggered.connect(self.showPrintCount)
+        toolbar.addAction(button_action)
+
 
 
         button_action = QAction("Edit Layout Configuration", self)
@@ -163,8 +168,13 @@ class Dashboard(QMainWindow):
         print("Queue Reset")
 
     def openLayoutEditor(self):
-        self.layoutWindow = LayoutWindow()
+        self.layoutWindow = LayoutWindow(self.printerThread)
         self.layoutWindow.show()
+    
+    def showPrintCount(self):
+        print(str(self.printerThread.getPrintCount()) + " Prints Have Occured")
+    
+    
         
         
 

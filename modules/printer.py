@@ -7,15 +7,29 @@ from time import sleep
 import serial, sys, time
 import os
 from printing import printImages
+import json
 
 class Printer(QThread):
     def __init__(self):
         self.currentBatch = []
+       
         super().__init__()
+        print("Printer Started")
+        self.num_of_photos = 4
+        self.current_print_count = 0
+       
+           
 
     def run(self):
         while True:
+          
             arr = os.listdir('./photos')
-            if len(arr) >= 4:
+            if len(arr) >= self.num_of_photos:
                 printImages(arr)
                 print("Printing Strips...")
+                self.current_print_count += 1
+
+    def updatePhotoCount(self, num_of_photos):
+        self.num_of_photos = num_of_photos
+    def getPrintCount(self):
+        return self.current_print_count

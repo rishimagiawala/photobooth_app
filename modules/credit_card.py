@@ -30,7 +30,10 @@ class Reader(QThread):
         
 
         while True:
-            data = self.ser.read(1)
+            try:
+                data = self.ser.read(1)
+            except:
+                print("Credit Card Reader Failed")
             data += self.ser.read(self.ser.inWaiting())
             integer_value = int.from_bytes(data) 
             # print(data)
