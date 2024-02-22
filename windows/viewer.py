@@ -10,20 +10,21 @@ from modules.photographer import Photographer
 from datetime import datetime
 
 class Viewer(QMainWindow):
-    def __init__(self, addToQueue, popFromQueue, getQueueCount):
+    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer):
         super().__init__()
 
         print("Viewer Started")
-        width = self.frameGeometry().width()
-        height = self.frameGeometry().height()
-        print(width)
-        print(height)
+        # width = self.frameGeometry().width()
+        # height = self.frameGeometry().height()
+        # print(width)
+        # print(height)
 
-         
+       
 
         self.addToQueue = addToQueue
         self.popFromQueue = popFromQueue
         self.getQueueCount = getQueueCount
+        self.closeViewer = closeViewer
       
         self.showingCam = False
         self.camImage = None
@@ -31,6 +32,10 @@ class Viewer(QMainWindow):
 
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
+        width = self.frameGeometry().width()
+        height = self.frameGeometry().height()
+        print(width)
+        print(height)
         self.image_label = QLabel()
         self.im = QPixmap("./assets/images/viewer/not_ready")
         self.image_label.setPixmap(self.im)
@@ -42,7 +47,7 @@ class Viewer(QMainWindow):
         self.countdown_label = QLabel(self.image_label)
         self.countdown_label.setScaledContents(True)
         self.countdown_label.resize(100,100)
-        self.countdown_label.move(960, 900) 
+        self.countdown_label.move(int(width/2)-50, height-120) 
 
         self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue, self.getTakenImage)
         self.photoThread.start()
@@ -82,3 +87,13 @@ class Viewer(QMainWindow):
         convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         p = convert_to_Qt_format.scaled(600, 600, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
+    
+    #Possible error in redundancy
+    
+    def closeEvent(self, event: QCloseEvent) -> None:
+        # print("Viewer was Closed")
+        self.photoThread.terminate()
+        self.closeViewer()
+        self.close()
+        self = None
+        return super().closeEvent(event)

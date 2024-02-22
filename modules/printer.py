@@ -11,10 +11,11 @@ import json
 
 class Printer(QThread):
     def __init__(self):
+        super().__init__()
         self.currentBatch = []
        
-        super().__init__()
-        print("Printer Started")
+        
+        print("Printer Module Started")
         self.num_of_photos = None
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
@@ -22,7 +23,7 @@ class Printer(QThread):
         
         self.current_print_count = 0
        
-           
+    beginPrint = Signal()        
 
     def run(self):
         while True:
@@ -31,7 +32,7 @@ class Printer(QThread):
             if len(arr) >= self.num_of_photos:
                 print("Sending Job to Printer...")
                 printImages(arr)
-                
+                self.beginPrint.emit()
                 self.current_print_count += 1
 
     def updatePhotoCount(self, num_of_photos):

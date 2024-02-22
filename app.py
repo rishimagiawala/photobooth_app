@@ -1,9 +1,10 @@
 from datetime import datetime
+import json
 import os
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
-from PySide6.QtGui import QAction, QPixmap, QImage, QTextCursor, QColor, QPalette
+from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QTextCursor, QColor, QPalette
 from PySide6.QtWidgets import QTextEdit, QSizePolicy
 from time import sleep
 import sys
@@ -11,6 +12,7 @@ import cv2
 from modules.camera import CameraReader
 from modules.credit_card import Reader
 from modules.printer import Printer
+from windows.credit import ReaderWindow
 from windows.layout import LayoutWindow
 from windows.photobooth import PhotoboothWindow
 from windows.viewer import Viewer
@@ -52,7 +54,11 @@ class Dashboard(QMainWindow):
         self.layoutWindow = None
         self.current_img = None
         self.queue = 0
-
+        self.readerWindow = None
+        self.printer_count = 0
+        with open('./config/printing/count.json', 'r') as layout_file:
+            layout_data = json.load(layout_file)
+            self.printer_count = layout_data['count']
 
 
         self.setWindowTitle("PhotoBooth Dashboard")
@@ -75,34 +81,48 @@ class Dashboard(QMainWindow):
         button_action.triggered.connect(self.saveImageToFile)
         toolbar.addAction(button_action)
 
-        button_action = QAction("Reset Credits", self)
-        button_action.setStatusTip("Reset credits")
+        button_action = QAction("Reset Queue Count", self)
+        button_action.setStatusTip("Reset queue")
         button_action.triggered.connect(self.resetQueueCount)
         toolbar.addAction(button_action)
 
-        button_action = QAction("Print Count", self)
-        button_action.setStatusTip("Show Print Counts")
+        button_action = QAction("Reset Print Count", self)
+        button_action.setStatusTip("Reset Print Count")
         button_action.triggered.connect(self.showPrintCount)
         toolbar.addAction(button_action)
 
 
 
-        button_action = QAction("Edit Layout Configuration", self)
-        button_action.setStatusTip("Edit layout")
-        button_action.triggered.connect(self.openLayoutEditor)
         
+        
+       
 
         menu = self.menuBar()
         config_menu = menu.addMenu("Configuration")
+
+
+        button_action = QAction("Edit Layout Configuration", self)
+        button_action.setStatusTip("Edit layout")
+        button_action.triggered.connect(self.openLayoutEditor)
         config_menu.addAction(button_action)
 
-        self.text_edit_console = QTextEdit(self)
+        button_action = QAction("Edit Reader Properties", self)
+        button_action.setStatusTip("Edit Reader")
+        button_action.triggered.connect(self.openReaderEditor)
+        config_menu.addAction(button_action)
         
+
+        self.text_edit_console = QTextEdit(self)
+
+
+        
+        self.count_label = QLabel("Total Prints: " + str(self.printer_count))
       
 
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.text_edit_console)
+        layout.addWidget(self.count_label)
         
         widget = QWidget()
         widget.setLayout(layout)
@@ -117,6 +137,7 @@ class Dashboard(QMainWindow):
        #Starting Printer    
         self.printerThread = Printer()
         self.printerThread.start()
+        self.printerThread.beginPrint.connect(self.incrementPrintCount)
 
         #Starting Credit Card Thread
         self.cardThread = Reader()
@@ -134,10 +155,17 @@ class Dashboard(QMainWindow):
 
     
     def startViewer(self):
-       
-        self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount)
-        self.w.show()
-
+        if self.w is None:
+            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer)
+            self.w.show()
+        else:
+           print(type(self.w))
+           print("Viewer Already Open")
+   
+    def closeViewer(self):
+        self.w.close()
+        self.w = None
+        print("Viewer Closed")
     
     def updateCurrentImage(self,image):
         self.current_img = image
@@ -172,11 +200,36 @@ class Dashboard(QMainWindow):
         self.layoutWindow.show()
     
     def showPrintCount(self):
-        print(str(self.printerThread.getPrintCount()) + " Prints Have Occured")
+        self.printer_count = 0
+        self.count_label.setText("Total Prints: " + str(self.printer_count))
     
+    def openReaderEditor(self):
+        self.readerWindow = ReaderWindow(self.cardThread)
+        self.readerWindow.show()
+
+    def incrementPrintCount(self):
+        self.printer_count += 1
+        self.count_label.setText("Total Prints: " + str(self.printer_count))
+
+    def savePrintData(self):
     
+        layout_data = None
+        with open('./config/printing/count.json', 'r') as layout_file:
+            layout_data = json.load(layout_file)
+            layout_data['count'] = self.printer_count
+           
+        with open('./config/printing/count.json', 'w') as layout_file:
+            json.dump(layout_data, layout_file)
+    #Possible error in redundancy   
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.cameraThread.terminate()
+        self.printerThread.terminate()
+        self.cardThread.terminate()
+        self.savePrintData()
+
+
         
-        
+        return super().closeEvent(event)   
 
 
 app = QApplication(sys.argv)
