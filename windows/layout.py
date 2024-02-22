@@ -10,9 +10,12 @@ from PySide6.QtWidgets import (
     QWidget,
     QComboBox,
     QToolBar,
+    QCheckBox
     
 )
 import json
+from printing import printTestImages
+
 
 
 class DragTargetIndicator(QLabel):
@@ -169,21 +172,28 @@ class LayoutWindow(QMainWindow):
         button_action.triggered.connect(self.saveLayout)
         toolbar.addAction(button_action)
 
+        button_action = QAction("Print Test Strip", self)
+        button_action.setStatusTip("Print Test Strip")
+        button_action.triggered.connect(self.printTest)
+        toolbar.addAction(button_action)
 
         #############
         self.setWindowTitle("Layout Editor")
+        self.resize(300,400)
         #Initializing Layout Variables:
 
         self.logo_position = None
         self.num_of_photos = None
         self.logo_path = None
+        self.logo_square = None
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
-            print(layout_data)
+            # print(layout_data)
 
             self.logo_path = layout_data['logo_path']
             self.num_of_photos = layout_data['num_of_photos']
             self.logo_position = layout_data['logo_position']
+            self.logo_square = layout_data['logo_square']
         ##################################
         self.logo_arr = os.listdir('./assets/images/logos')
 
@@ -253,6 +263,19 @@ class LayoutWindow(QMainWindow):
         logoHLayout.addStretch(1)
         ##############################
 
+        #Logo Square Checkbox
+
+        logoSquareHLayout = QHBoxLayout()
+        sqlogo_label = QLabel("Logo Square:")
+        self.checkBox = QCheckBox()
+        self.checkBox.setChecked(self.logo_square)
+        logoSquareHLayout.addWidget(sqlogo_label)
+        logoSquareHLayout.addWidget(self.checkBox)
+        
+        logoSquareHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        logoSquareHLayout.addStretch(1)
+    ##############################
+
 
         container = QWidget()
         mainHContainer = QHBoxLayout()
@@ -263,6 +286,7 @@ class LayoutWindow(QMainWindow):
         
         layout2.addLayout(comboHLayout)
         layout2.addLayout(logoHLayout)
+        layout2.addLayout(logoSquareHLayout)
         self.layout.addWidget(self.drag)
         
         mainHContainer.addLayout(self.layout)
@@ -328,15 +352,18 @@ class LayoutWindow(QMainWindow):
             layout_data = json.load(layout_file)
             layout_data['logo_path'] = self.logo_path
             layout_data['num_of_photos'] = self.num_of_photos
-            
+            layout_data['logo_square'] = self.checkBox.isChecked()
             image_height= int(1400/(self.num_of_photos))
 
             layout_data['image_height'] = image_height
-            layout_data['logo_height'] = image_height - 20
+            
            
             for i in range(len(self.order)):
                 if self.order[i] == 'LOGO':
                     layout_data['logo_position'] = i
+
+            
+
 
             
            
@@ -344,3 +371,7 @@ class LayoutWindow(QMainWindow):
             json.dump(layout_data, layout_file)
         
         self.printer.updatePhotoCount(layout_data['num_of_photos'])
+    def printTest(self):
+        arr = os.listdir('./test_photos')
+        arr = arr[:self.num_of_photos]
+        printTestImages(arr)

@@ -15,7 +15,11 @@ class Printer(QThread):
        
         super().__init__()
         print("Printer Started")
-        self.num_of_photos = 4
+        self.num_of_photos = None
+        with open('./config/printing/layout.json', 'r') as layout_file:
+            layout_data = json.load(layout_file)
+            self.num_of_photos = layout_data['num_of_photos']
+        
         self.current_print_count = 0
        
            
@@ -25,8 +29,9 @@ class Printer(QThread):
           
             arr = os.listdir('./photos')
             if len(arr) >= self.num_of_photos:
+                print("Sending Job to Printer...")
                 printImages(arr)
-                print("Printing Strips...")
+                
                 self.current_print_count += 1
 
     def updatePhotoCount(self, num_of_photos):
