@@ -4,7 +4,7 @@ from PIL import Image, ImageWin, ImageOps
 import os
 import json
 
-
+right_off = 6
 def printImages(image_arr):
     print("Print Job Recieved")
     image_height = None
@@ -75,29 +75,51 @@ def printImages(image_arr):
             bmp = bmp.rotate (90, expand=True)
 
     
-        
+        init = 20
         dib = ImageWin.Dib (bmp)
-        
-        if logo_pos !=i:
+        if i == 0:
+            if logo_pos !=i:
 
-            dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
-            dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
-            image_offset += image_height
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
+                image_offset += image_height
+            else:
+                if logo_square == False:
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
+                elif logo_square == True:
+                    marginx = 54
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
+                    
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
+                    marginx = 10
+                    
+                image_offset += logo_height 
+            
+            if logo_pos != i:
+                os.remove(image_arr[i])
         else:
-            if logo_square == False:
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
-            elif logo_square == True:
-                marginx = 54
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(marginx*2.7), image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
-                
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
-                marginx = 10
-                
-            image_offset += logo_height 
-           
-        if logo_pos != i:
-             os.remove(image_arr[i])
+            if logo_pos !=i:
+
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
+                image_offset += image_height
+            else:
+                if logo_square == False:
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
+                elif logo_square == True:
+                    marginx = 54
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
+                    
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
+                    marginx = 10
+                    
+                image_offset += logo_height 
+            
+            if logo_pos != i:
+                os.remove(image_arr[i])
+
         # else:
 
         #     dib.draw (hDC.GetHandleOutput (), ((image_height*i) + marginy,marginx*2, image_height*i + image_height, int(printer_size[1]/2)-(marginx*2)))
@@ -173,6 +195,9 @@ def printTestImages(image_arr):
     # print("Printer X Size: " + str(printer_size[1]/2))
     marginx =  10
     image_offset = 0
+    init = 20
+    
+
     for i in range(len(image_arr)):
         bmp = Image.open (image_arr[i])
         # print(bmp.size[0])
@@ -181,33 +206,54 @@ def printTestImages(image_arr):
             bmp = bmp.rotate (90, expand=True)
 
     
-        
         dib = ImageWin.Dib (bmp)
-        
-        if logo_pos !=i:
+        if i == 0:
+            if logo_pos !=i:
 
-            dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
-            dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
-            image_offset += image_height
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
+                image_offset += image_height
+            else:
+                if logo_square == False:
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
+                elif logo_square == True:
+                    marginx = 54
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
+                    
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
+                    marginx = 10
+                    
+                image_offset += logo_height 
+            
+            
         else:
-            if logo_square == False:
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
-            elif logo_square == True:
-                marginx = 54
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(marginx*2.7), image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
-                
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
-                marginx = 10
-                
-            image_offset += logo_height 
-           
-        # if logo_pos != i:
-        #      os.remove(image_arr[i])
+            if logo_pos !=i:
+
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
+                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
+                image_offset += image_height
+            else:
+                if logo_square == False:
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
+                elif logo_square == True:
+                    marginx = 54
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
+                    
+                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
+                    marginx = 10
+                    
+                image_offset += logo_height 
+            
+            
+
         # else:
 
         #     dib.draw (hDC.GetHandleOutput (), ((image_height*i) + marginy,marginx*2, image_height*i + image_height, int(printer_size[1]/2)-(marginx*2)))
         #     dib.draw (hDC.GetHandleOutput (), ((image_height*i) + marginy,int(printer_size[1]/2)+(marginx), image_height*i + image_height, int(printer_size[1])-(marginx*2)))
+
+   
 
    
 

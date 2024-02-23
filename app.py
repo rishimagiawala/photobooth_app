@@ -5,7 +5,7 @@ import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
 from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QTextCursor, QColor, QPalette
-from PySide6.QtWidgets import QTextEdit, QSizePolicy
+from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox
 from time import sleep
 import sys
 import cv2
@@ -40,6 +40,8 @@ class Stream(QThread):
 
     def write(self, text):
         self.newText.emit(str(text))
+    def flush(self):
+        pass
 
        
 
@@ -56,9 +58,13 @@ class Dashboard(QMainWindow):
         self.queue = 0
         self.readerWindow = None
         self.printer_count = 0
+        self.startup_viewer = None
+        
+        
         with open('./config/printing/count.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.printer_count = layout_data['count']
+            self.startup_viewer = layout_data['startup_viewer']
 
 
         self.setWindowTitle("PhotoBooth Dashboard")
@@ -76,14 +82,10 @@ class Dashboard(QMainWindow):
         button_action.triggered.connect(self.startViewer)
         toolbar.addAction(button_action)
 
-        button_action = QAction("Take Picture", self)
-        button_action.setStatusTip("Take Picture")
-        button_action.triggered.connect(self.saveImageToFile)
-        toolbar.addAction(button_action)
 
-        button_action = QAction("Reset Queue Count", self)
-        button_action.setStatusTip("Reset queue")
-        button_action.triggered.connect(self.resetQueueCount)
+        button_action = QAction("Flush Queue", self)
+        button_action.setStatusTip("Flush Queue")
+        button_action.triggered.connect(self.flushQueue)
         toolbar.addAction(button_action)
 
         button_action = QAction("Reset Print Count", self)
@@ -98,7 +100,17 @@ class Dashboard(QMainWindow):
        
 
         menu = self.menuBar()
+
+
+      
+
         config_menu = menu.addMenu("Configuration")
+        testing_menu = menu.addMenu("Testing")
+
+        button_action = QAction("Take Picture", self)
+        button_action.setStatusTip("Take Picture")
+        button_action.triggered.connect(self.saveImageToFile)
+        testing_menu.addAction(button_action)
 
 
         button_action = QAction("Edit Layout Configuration", self)
@@ -117,12 +129,19 @@ class Dashboard(QMainWindow):
 
         
         self.count_label = QLabel("Total Prints: " + str(self.printer_count))
-      
+
+        self.queue_label =QLabel("Queue Count: " + str(self.queue))
+
+        self.viewer_launch_toggle = QCheckBox(text="Start Viewer On Launch")
+        self.viewer_launch_toggle.setChecked(self.startup_viewer)
+        self.viewer_launch_toggle.stateChanged.connect(self.toggleViewerOnLaunch)
 
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.text_edit_console)
         layout.addWidget(self.count_label)
+        layout.addWidget(self.queue_label)
+        layout.addWidget(self.viewer_launch_toggle)
         
         widget = QWidget()
         widget.setLayout(layout)
@@ -144,20 +163,29 @@ class Dashboard(QMainWindow):
         self.cardThread.start()
         self.cardThread.begin_session.connect(self.addToQueue)
 
-
+        if self.startup_viewer is True:
+            self.startViewer()
 
     
     def saveImageToFile(self):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f'./photos/image_{timestamp}.jpg'
-        cv2.imwrite(filename,self.current_img)
-        print("Picture Taken")
+        if self.queue == 0:
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f'./photos/image_{timestamp}.jpg'
+            cv2.imwrite(filename,self.current_img)
+            print("Picture Taken")
+        else:
+            print("Please 'Flush Queue' to Take Picture")
 
     
     def startViewer(self):
         if self.w is None:
             self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer)
+            #Weird behavior
+            self.showNormal()
+            self.showMinimized()
+            
             self.w.show()
+            
         else:
            print(type(self.w))
            print("Viewer Already Open")
@@ -165,6 +193,7 @@ class Dashboard(QMainWindow):
     def closeViewer(self):
         self.w.close()
         self.w = None
+        self.flushQueue()
         print("Viewer Closed")
     
     def updateCurrentImage(self,image):
@@ -181,19 +210,30 @@ class Dashboard(QMainWindow):
         self.text_edit_console.ensureCursorVisible()
 
     def addToQueue(self):
+        #Test this
+        if self.queue == 0:
+            self.flushQueue()
+
         self.queue += 1
         print("Queue Count: " + str(self.queue))
+        self.queue_label.setText("Queue Count: " + str(self.queue))
     def popFromQueue(self):
         if self.queue > 0:
             self.queue -= 1
         else:
             self.queue = 0
         print("Queue Count: " + str(self.queue))
+        self.queue_label.setText("Queue Count: " + str(self.queue))
     def getQueueCount(self):
         return self.queue
-    def resetQueueCount(self):
+    def flushQueue(self):
+
         self.queue = 0
-        print("Queue Reset")
+        for filename in os.listdir('./photos'):
+            if os.path.isfile(os.path.join('./photos', filename)):
+                os.remove(os.path.join('./photos', filename))
+        print("Cleaned Queue | Flushed Previous Photos")
+        self.queue_label.setText("Queue Count: " + str(self.queue))
 
     def openLayoutEditor(self):
         self.layoutWindow = LayoutWindow(self.printerThread)
@@ -217,14 +257,34 @@ class Dashboard(QMainWindow):
         with open('./config/printing/count.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             layout_data['count'] = self.printer_count
+            layout_data['startup_viewer']= self.startup_viewer
            
         with open('./config/printing/count.json', 'w') as layout_file:
             json.dump(layout_data, layout_file)
+    
+    def toggleViewerOnLaunch(self):
+        self.startup_viewer = self.viewer_launch_toggle.isChecked()
+        self.savePrintData()
+
+
+
     #Possible error in redundancy   
     def closeEvent(self, event: QCloseEvent) -> None:
         self.cameraThread.terminate()
         self.printerThread.terminate()
         self.cardThread.terminate()
+        self.flushQueue()
+        if self.w is not None:
+            self.w.close()
+            self.w = None
+            
+        if self.layoutWindow is not None:
+            self.layoutWindow.close()
+            self.layoutWindow = None
+
+        if self.readerWindow is not None:
+            self.readerWindow.close()
+            self.readerWindow = None
         self.savePrintData()
 
 

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
-from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint
-from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QDesktopServices
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination
+from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QPixmap, QImage, QDesktopServices, QCursor
 from time import sleep
 import sys
 from modules.camera import CameraReader
@@ -20,7 +20,7 @@ class Viewer(QMainWindow):
         # print(height)
 
        
-
+        self.hidden_cursor = QCursor()
         self.addToQueue = addToQueue
         self.popFromQueue = popFromQueue
         self.getQueueCount = getQueueCount
@@ -32,10 +32,12 @@ class Viewer(QMainWindow):
 
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
+       
         width = self.frameGeometry().width()
         height = self.frameGeometry().height()
-        print(width)
-        print(height)
+        self.hidden_cursor.setPos(width+300,0)
+        # print(width)
+        # print(height)
         self.image_label = QLabel()
         self.im = QPixmap("./assets/images/viewer/not_ready")
         self.image_label.setPixmap(self.im)
@@ -53,6 +55,13 @@ class Viewer(QMainWindow):
         self.photoThread.start()
         self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key_Escape:
+            self.photoThread.terminate()
+            self.closeViewer()
+            self.close()
+
 
     def mouseDoubleClickEvent(self, e):
         self.addToQueue()
@@ -91,9 +100,12 @@ class Viewer(QMainWindow):
     #Possible error in redundancy
     
     def closeEvent(self, event: QCloseEvent) -> None:
+        
         # print("Viewer was Closed")
         self.photoThread.terminate()
         self.closeViewer()
         self.close()
-        self = None
+        
+        
         return super().closeEvent(event)
+        

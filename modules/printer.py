@@ -39,3 +39,5 @@ class Printer(QThread):
         self.num_of_photos = num_of_photos
     def getPrintCount(self):
         return self.current_print_count
+    def emitPrint(self):
+        self.beginPrint.emit()

@@ -353,7 +353,7 @@ class LayoutWindow(QMainWindow):
             layout_data['logo_path'] = self.logo_path
             layout_data['num_of_photos'] = self.num_of_photos
             layout_data['logo_square'] = self.checkBox.isChecked()
-            image_height= int(1400/(self.num_of_photos))
+            image_height= int(1460/(self.num_of_photos))
 
             layout_data['image_height'] = image_height
             
@@ -375,3 +375,4 @@ class LayoutWindow(QMainWindow):
         arr = os.listdir('./test_photos')
         arr = arr[:self.num_of_photos]
         printTestImages(arr)
+        self.printer.emitPrint()
