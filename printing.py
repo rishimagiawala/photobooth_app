@@ -1,3 +1,4 @@
+import random
 import win32print
 import win32ui
 from PIL import Image, ImageWin, ImageOps
@@ -17,6 +18,9 @@ def printImages(image_arr):
     image_marginx =None
     image_marginy =None
     num_of_images =  len(image_arr)
+    background_path = None
+    include_background = None
+    transparent_tuple = (255,255,255,0)
 
     logo_pos = None
     with open('./config/printing/layout.json', 'r') as layout_file:
@@ -33,6 +37,9 @@ def printImages(image_arr):
         image_marginy = layout_data['image_marginy']
         logo_pos = layout_data['logo_position']
         logo_square = layout_data['logo_square']
+        background_path = layout_data['background_path']
+        include_background = layout_data['include_background']
+
 
     
 
@@ -61,18 +68,27 @@ def printImages(image_arr):
     hDC.StartDoc (file_name)
     hDC.StartPage ()
 
-    
-    
+#Beginning Background Code
+    if include_background == True:
+        bmp = Image.open(background_path)
+        dib = ImageWin.Dib(bmp)
+        dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
+        transparent_tuple = get_random_pixel_rgb(bmp)
+#################
     # print("Printer Y Size: " + str(printer_size[0]))
     # print("Printer X Size: " + str(printer_size[1]/2))
     marginx =  10
     image_offset = 0
     for i in range(len(image_arr)):
-        bmp = Image.open (image_arr[i])
+        bmp = Image.open (image_arr[i]).convert("RGBA")
+        bmp.has_transparency_data = True
         # print(bmp.size[0])
         # print(bmp.size[1])
         if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate==True):
             bmp = bmp.rotate (90, expand=True)
+        if logo_pos == i:
+            print("This was called")
+            bmp = makeTransparent(bmp, transparent_tuple)
 
     
         init = 20
@@ -145,6 +161,9 @@ def printTestImages(image_arr):
     image_marginx =None
     image_marginy =None
     num_of_images =  len(image_arr)
+    background_path = None
+    include_background = None
+    transparent_tuple = (255,255,255,0)
 
     logo_pos = None
     with open('./config/printing/layout.json', 'r') as layout_file:
@@ -161,7 +180,8 @@ def printTestImages(image_arr):
         image_marginy = layout_data['image_marginy']
         logo_pos = layout_data['logo_position']
         logo_square = layout_data['logo_square']
-
+        background_path = layout_data['background_path']
+        include_background = layout_data['include_background']
     
 
 
@@ -189,8 +209,15 @@ def printTestImages(image_arr):
     hDC.StartDoc (file_name)
     hDC.StartPage ()
 
-    
-    
+
+    # This is the new stuff
+    if include_background == True:
+        bmp = Image.open(background_path)
+        dib = ImageWin.Dib(bmp)
+        dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
+        transparent_tuple = get_random_pixel_rgb(bmp)
+        
+#################
     # print("Printer Y Size: " + str(printer_size[0]))
     # print("Printer X Size: " + str(printer_size[1]/2))
     marginx =  10
@@ -199,14 +226,18 @@ def printTestImages(image_arr):
     
 
     for i in range(len(image_arr)):
-        bmp = Image.open (image_arr[i])
+        bmp = Image.open (image_arr[i]).convert("RGBA")
+        bmp.has_transparency_data = True
         # print(bmp.size[0])
         # print(bmp.size[1])
         if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate==True):
             bmp = bmp.rotate (90, expand=True)
-
+        if logo_pos == i:
+            print("This was called")
+            bmp = makeTransparent(bmp, transparent_tuple)
     
         dib = ImageWin.Dib (bmp)
+
         if i == 0:
             if logo_pos !=i:
 
@@ -262,3 +293,41 @@ def printTestImages(image_arr):
     hDC.EndPage ()
     hDC.EndDoc ()
     hDC.DeleteDC ()
+
+
+
+def makeTransparent(img, transparent_tuple):
+    rgba = img.convert("RGBA")
+    datas = rgba.getdata() 
+  
+    newData = [] 
+    for item in datas: 
+        if item[3] == 0:  # finding black colour by its RGB value 
+            # storing a transparent value when we find a black colour 
+           
+            newData.append(transparent_tuple) 
+        else: 
+            newData.append(item)  # other colours remain unchanged 
+    
+    rgba.putdata(newData) 
+
+    return rgba
+
+
+def get_random_pixel_rgb(image):
+    # Get image dimensions
+    width, height = image.size
+    
+    # Get random coordinates
+    random_x = random.randint(0, width - 1)
+    random_y = random.randint(0, height - 1)
+
+    # Get RGB values of the random pixel
+    rgb_value = image.getpixel((random_x, random_y))
+
+    transparent_tuple = rgb_value + (0,)
+
+    return transparent_tuple
+
+    
+    

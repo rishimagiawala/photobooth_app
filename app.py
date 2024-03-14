@@ -186,6 +186,14 @@ class Dashboard(QMainWindow):
             
             self.w.show()
             
+            if self.layoutWindow is not None:
+                self.layoutWindow.close()
+                self.layoutWindow = None
+
+            if self.readerWindow is not None:
+                self.readerWindow.close()
+                self.readerWindow = None
+
         else:
            print(type(self.w))
            print("Viewer Already Open")

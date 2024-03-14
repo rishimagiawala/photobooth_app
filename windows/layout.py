@@ -167,6 +167,11 @@ class LayoutWindow(QMainWindow):
         button_action.triggered.connect(self.openLogoFolder)
         toolbar.addAction(button_action)
 
+        button_action = QAction("Open Background Folder", self)
+        button_action.setStatusTip("Open Background Folder")
+        button_action.triggered.connect(self.openBackgroundFolder)
+        toolbar.addAction(button_action)
+
         button_action = QAction("Save Layout", self)
         button_action.setStatusTip("Save Layout")
         button_action.triggered.connect(self.saveLayout)
@@ -186,6 +191,8 @@ class LayoutWindow(QMainWindow):
         self.num_of_photos = None
         self.logo_path = None
         self.logo_square = None
+        self.background_path = None
+        self.include_background = None
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             # print(layout_data)
@@ -194,12 +201,20 @@ class LayoutWindow(QMainWindow):
             self.num_of_photos = layout_data['num_of_photos']
             self.logo_position = layout_data['logo_position']
             self.logo_square = layout_data['logo_square']
+            self.background_path = layout_data['background_path']
+            self.include_background = layout_data['include_background']
         ##################################
         self.logo_arr = os.listdir('./assets/images/logos')
 
         self.logo_arr = ['./assets/images/logos/{0}'.format(element) for element in self.logo_arr]
         self.logo_arr.remove(self.logo_path)
         self.logo_arr.insert(0, self.logo_path)
+
+
+        self.background_arr = os.listdir('./assets/images/background')
+        self.background_arr = ['./assets/images/background/{0}'.format(element) for element in self.background_arr]
+        self.background_arr.remove(self.background_path)
+        self.background_arr.insert(0, self.background_path)
 
         self.order = []
         for i in range(self.num_of_photos + 1):
@@ -254,7 +269,6 @@ class LayoutWindow(QMainWindow):
         self.logo_combobox = QComboBox()
         
         self.logo_combobox.addItems(self.logo_arr)
-           
         self.logo_combobox.currentTextChanged.connect(self.updateLogo)
 
         logoHLayout.addWidget(logos_label)
@@ -277,6 +291,42 @@ class LayoutWindow(QMainWindow):
     ##############################
 
 
+
+        #Background Selector
+
+        backgroundHLayout = QHBoxLayout()
+        backgrounds_label = QLabel("Select background:")
+        self.background_combobox = QComboBox()
+        
+        self.background_combobox.addItems(self.background_arr)
+           
+        self.background_combobox.currentTextChanged.connect(self.updateBackground)
+
+        backgroundHLayout.addWidget(backgrounds_label)
+        backgroundHLayout.addWidget(self.background_combobox)
+        backgroundHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        backgroundHLayout.addStretch(1)
+        ##############################
+
+        #Background Square Checkbox
+
+        backgroundSquareHLayout = QHBoxLayout()
+        sqbackground_label = QLabel("Apply Background:")
+        self.bcheckBox = QCheckBox()
+        self.bcheckBox.setChecked(self.include_background)
+        backgroundSquareHLayout.addWidget(sqbackground_label)
+        backgroundSquareHLayout.addWidget(self.bcheckBox)
+        
+        backgroundSquareHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        backgroundSquareHLayout.addStretch(1)
+    ##############################
+
+
+
+
+
+
+
         container = QWidget()
         mainHContainer = QHBoxLayout()
         layout2 = QVBoxLayout()
@@ -287,6 +337,8 @@ class LayoutWindow(QMainWindow):
         layout2.addLayout(comboHLayout)
         layout2.addLayout(logoHLayout)
         layout2.addLayout(logoSquareHLayout)
+        layout2.addLayout(backgroundHLayout)
+        layout2.addLayout(backgroundSquareHLayout)
         self.layout.addWidget(self.drag)
         
         mainHContainer.addLayout(self.layout)
@@ -341,8 +393,16 @@ class LayoutWindow(QMainWindow):
         self.logo_path = text
         self.changeLayout()
 
+    def updateBackground(self, text):
+        self.background_path = text
+
     def openLogoFolder(self):
         path = "./assets/images/logos"
+        path = os.path.realpath(path)
+        os.startfile(path)  
+
+    def openBackgroundFolder(self):
+        path = "./assets/images/background"
         path = os.path.realpath(path)
         os.startfile(path)  
 
@@ -353,6 +413,8 @@ class LayoutWindow(QMainWindow):
             layout_data['logo_path'] = self.logo_path
             layout_data['num_of_photos'] = self.num_of_photos
             layout_data['logo_square'] = self.checkBox.isChecked()
+            layout_data['background_path'] = self.background_path
+            layout_data['include_background'] = self.bcheckBox.isChecked()
             image_height= int(1460/(self.num_of_photos))
 
             layout_data['image_height'] = image_height
