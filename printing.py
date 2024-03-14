@@ -1,7 +1,7 @@
 import random
 import win32print
 import win32ui
-from PIL import Image, ImageWin, ImageOps
+from PIL import Image, ImageWin, ImageOps, ImageColor
 import os
 import json
 
@@ -39,7 +39,9 @@ def printImages(image_arr):
         logo_square = layout_data['logo_square']
         background_path = layout_data['background_path']
         include_background = layout_data['include_background']
+        background_color = layout_data['background_color']
 
+        transparent_tuple = ImageColor.getcolor(background_color, "RGB") + (0,) 
 
     
 
@@ -71,9 +73,10 @@ def printImages(image_arr):
 #Beginning Background Code
     if include_background == True:
         bmp = Image.open(background_path)
+        bmp = changeBackgroundColor(bmp, transparent_tuple)
         dib = ImageWin.Dib(bmp)
         dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
-        transparent_tuple = get_random_pixel_rgb(bmp)
+        
 #################
     # print("Printer Y Size: " + str(printer_size[0]))
     # print("Printer X Size: " + str(printer_size[1]/2))
@@ -182,6 +185,9 @@ def printTestImages(image_arr):
         logo_square = layout_data['logo_square']
         background_path = layout_data['background_path']
         include_background = layout_data['include_background']
+        background_color = layout_data['background_color']
+
+        transparent_tuple = ImageColor.getcolor(background_color, "RGB") + (0,) 
     
 
 
@@ -213,9 +219,10 @@ def printTestImages(image_arr):
     # This is the new stuff
     if include_background == True:
         bmp = Image.open(background_path)
+        bmp = changeBackgroundColor(bmp, transparent_tuple)
         dib = ImageWin.Dib(bmp)
         dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
-        transparent_tuple = get_random_pixel_rgb(bmp)
+        
         
 #################
     # print("Printer Y Size: " + str(printer_size[0]))
@@ -329,5 +336,17 @@ def get_random_pixel_rgb(image):
 
     return transparent_tuple
 
+def changeBackgroundColor(img, transparent_tuple):
+    rgba = img.convert("RGBA")
+    datas = rgba.getdata() 
+  
+    newData = [] 
+    for item in datas: 
+        newData.append(transparent_tuple) 
+        
+    
+    rgba.putdata(newData) 
+
+    return rgba
     
     
