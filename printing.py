@@ -90,7 +90,7 @@ def printImages(image_arr):
         if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate==True):
             bmp = bmp.rotate (90, expand=True)
         if logo_pos == i:
-            print("This was called")
+            
             bmp = makeTransparent(bmp, transparent_tuple)
 
     
