@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination
-from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QPixmap, QImage, QDesktopServices, QCursor
+from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor
 from time import sleep
 import sys
 from modules.camera import CameraReader
@@ -35,6 +35,9 @@ class Viewer(QMainWindow):
        
         width = self.frameGeometry().width()
         height = self.frameGeometry().height()
+
+        self.cancel_width = int(.15* width)
+        self.cancel_height = int(.1 * height)
         self.hidden_cursor.setPos(width+300,0)
         # print(width)
         # print(height)
@@ -65,6 +68,21 @@ class Viewer(QMainWindow):
 
     def mouseDoubleClickEvent(self, e):
         self.addToQueue()
+    
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+
+        if event.x() <= self.cancel_width and event.y() <= self.cancel_height:
+            self.photoThread.terminate()
+            self.closeViewer()
+            self.close()
+        else:
+            if self.getQueueCount() == 0:
+                self.addToQueue()
+            else:
+                print("Session Already In Queue")
+
+        return super().mousePressEvent(event)
+
    
     def updateImage(self,image):
         self.image_label.setPixmap(image)
@@ -80,8 +98,11 @@ class Viewer(QMainWindow):
         self.showingCam =  toggle
     def saveImageToFile(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f'./photos/image_{timestamp}.jpg'
+        filename = f'./photos/image_{timestamp}.png'
+        permname = f'./saved_photos/image_{timestamp}.png'
+        cv2.imwrite(permname,self.camImage)
         cv2.imwrite(filename,self.camImage)
+        
         print("Picture Taken")
     def updateCountImage(self, image):
         self.countdown_label.setPixmap(image)

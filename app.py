@@ -59,12 +59,14 @@ class Dashboard(QMainWindow):
         self.readerWindow = None
         self.printer_count = 0
         self.startup_viewer = None
+        self.mobile_view = None
         
         
         with open('./config/printing/count.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.printer_count = layout_data['count']
             self.startup_viewer = layout_data['startup_viewer']
+            self.mobile_view = layout_data['mobile_view']
 
 
         self.setWindowTitle("PhotoBooth Dashboard")
@@ -136,13 +138,18 @@ class Dashboard(QMainWindow):
         self.viewer_launch_toggle.setChecked(self.startup_viewer)
         self.viewer_launch_toggle.stateChanged.connect(self.toggleViewerOnLaunch)
 
+        self.mobile_view_toggle = QCheckBox(text="Enable Mobile View")
+        self.mobile_view_toggle.setChecked(self.mobile_view)
+        self.mobile_view_toggle.stateChanged.connect(self.toggleMobile)
+
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.text_edit_console)
         layout.addWidget(self.count_label)
         layout.addWidget(self.queue_label)
         layout.addWidget(self.viewer_launch_toggle)
-        
+        layout.addWidget(self.mobile_view_toggle)
+
         widget = QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
@@ -266,6 +273,7 @@ class Dashboard(QMainWindow):
             layout_data = json.load(layout_file)
             layout_data['count'] = self.printer_count
             layout_data['startup_viewer']= self.startup_viewer
+            layout_data['mobile_view'] = self.mobile_view
            
         with open('./config/printing/count.json', 'w') as layout_file:
             json.dump(layout_data, layout_file)
@@ -273,7 +281,19 @@ class Dashboard(QMainWindow):
     def toggleViewerOnLaunch(self):
         self.startup_viewer = self.viewer_launch_toggle.isChecked()
         self.savePrintData()
+    def toggleMobile(self):
+        self.mobile_view = self.mobile_view_toggle.isChecked()
 
+        if self.mobile_view == True:
+            
+            os.rename('./assets/images/viewer/not_ready.png', './assets/images/viewer/ready_photobooth.png')
+            os.rename('./assets/images/viewer/ready_mobile.png', './assets/images/viewer/not_ready.png')
+            
+        elif self.mobile_view == False:
+            os.rename('./assets/images/viewer/not_ready.png', './assets/images/viewer/ready_mobile.png')
+            os.rename('./assets/images/viewer/ready_photobooth.png', './assets/images/viewer/not_ready.png')
+
+        self.savePrintData()
 
 
     #Possible error in redundancy   
