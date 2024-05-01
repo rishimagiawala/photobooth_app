@@ -12,10 +12,16 @@ class CameraReader(QThread):
         
         print("Camera Module Started")
         try:
-
-            self.cap = cv2.VideoCapture(1, cv2.CAP_DSHOW) 
+            
+            self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW) 
+            
             self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G')) 
-            self.cap.set(cv2.CAP_PROP_FPS, 60)
+            self.cap.set(cv2.CAP_PROP_FPS, 24)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840) 
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160) 
+            width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(width, height)
         except:
             print("Camera Startup Failed")
             
