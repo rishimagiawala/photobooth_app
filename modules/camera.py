@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Optional
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget
 from PySide6.QtCore import QObject, Qt, QThread, Signal
@@ -24,6 +25,10 @@ class CameraReader(QThread):
             print(width, height)
         except:
             print("Camera Startup Failed")
+        with suppress(ModuleNotFoundError):
+            import pyi_splash  # noqa
+
+            pyi_splash.close()
             
         self.ret = None
         self.cv_img = None

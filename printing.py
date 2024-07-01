@@ -71,11 +71,13 @@ def printImages(image_arr):
     hDC.StartPage ()
 
 #Beginning Background Code
-    if include_background == True:
-        bmp = Image.open(background_path)
-        bmp = changeBackgroundColor(bmp, transparent_tuple)
-        dib = ImageWin.Dib(bmp)
-        dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
+    # Removing this - 6/27/2024
+    # if include_background == True:
+    #     bmp = Image.open(background_path)
+    #     bmp = changeBackgroundColor(bmp, transparent_tuple)
+    #     dib = ImageWin.Dib(bmp)
+    #     dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
+    #End comment 
         
 #################
     # print("Printer Y Size: " + str(printer_size[0]))
@@ -217,12 +219,13 @@ def printTestImages(image_arr):
 
 
     # This is the new stuff
-    if include_background == True:
-        bmp = Image.open(background_path)
-        bmp = changeBackgroundColor(bmp, transparent_tuple)
-        dib = ImageWin.Dib(bmp)
-        dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
-        
+    # 6/27/2024 this stuff is commented
+    # if include_background == True:
+    #     bmp = Image.open(background_path)
+    #     bmp = changeBackgroundColor(bmp, transparent_tuple)
+    #     dib = ImageWin.Dib(bmp)
+    #     dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
+    # End comment    6/27/2024
         
 #################
     # print("Printer Y Size: " + str(printer_size[0]))
@@ -240,7 +243,8 @@ def printTestImages(image_arr):
         if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate==True):
             bmp = bmp.rotate (90, expand=True)
         if logo_pos == i:
-            print("This was called")
+            
+            #6/27/2024 commented out initially - but added back in
             bmp = makeTransparent(bmp, transparent_tuple)
     
         dib = ImageWin.Dib (bmp)
@@ -320,21 +324,21 @@ def makeTransparent(img, transparent_tuple):
 
     return rgba
 
-
-def get_random_pixel_rgb(image):
-    # Get image dimensions
-    width, height = image.size
+# Deprecated function 6/27/2024
+# def get_random_pixel_rgb(image):
+#     # Get image dimensions
+#     width, height = image.size
     
-    # Get random coordinates
-    random_x = random.randint(0, width - 1)
-    random_y = random.randint(0, height - 1)
+#     # Get random coordinates
+#     random_x = random.randint(0, width - 1)
+#     random_y = random.randint(0, height - 1)
 
-    # Get RGB values of the random pixel
-    rgb_value = image.getpixel((random_x, random_y))
+#     # Get RGB values of the random pixel
+#     rgb_value = image.getpixel((random_x, random_y))
 
-    transparent_tuple = rgb_value + (0,)
+#     transparent_tuple = rgb_value + (0,)
 
-    return transparent_tuple
+#     return transparent_tuple
 
 def changeBackgroundColor(img, transparent_tuple):
     rgba = img.convert("RGBA")

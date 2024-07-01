@@ -325,10 +325,10 @@ class LayoutWindow(QMainWindow):
     #     backgroundSquareHLayout.addStretch(1)
     # ##############################
 
-        #Color Dialog Button
-        colorButton = QPushButton("Choose Background Color")
+        # Color Dialog Button removed 6/27/2024
+        # colorButton = QPushButton("Choose Background Color")
 
-        colorButton.clicked.connect(self.openColorDialog)
+        # colorButton.clicked.connect(self.openColorDialog)
 
 
 
@@ -346,7 +346,7 @@ class LayoutWindow(QMainWindow):
         layout2.addLayout(logoSquareHLayout)
         # layout2.addLayout(backgroundHLayout)
         # layout2.addLayout(backgroundSquareHLayout)
-        layout2.addWidget(colorButton)
+        # layout2.addWidget(colorButton)
 
         self.layout.addWidget(self.drag)
         

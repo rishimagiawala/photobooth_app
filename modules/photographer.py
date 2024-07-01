@@ -10,13 +10,14 @@ import cv2
 import numpy as np
 import os
 class Photographer(QThread):
-    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage):
+    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage, getPrintCount):
         super().__init__()
         self.getQueueCount = getQueueCount
         self.popFromQueue = popFromQueue
         self.toggleCamStream = callbackCam
         self.takePicture = callbackTakePicture
         self.getTakenImage = getTakenImage
+        self.getPrintCount = getPrintCount
 
     change_image_signal = Signal(QPixmap)
     change_count_signal = Signal(QPixmap)
@@ -68,9 +69,14 @@ class Photographer(QThread):
                 self.popFromQueue()
 
                 if self.getQueueCount() == 0:
+                    
                     self.change_count_signal.emit(QPixmap())
-                    im = QPixmap("./assets/images/viewer/not_ready")
-                    self.change_image_signal.emit(im)
+                    if self.getPrintCount() > 699:
+                        im = QPixmap("./assets/images/viewer/no_paper")
+                        self.change_image_signal.emit(im)
+                    else:
+                        im = QPixmap("./assets/images/viewer/not_ready")
+                        self.change_image_signal.emit(im)
            
         
 

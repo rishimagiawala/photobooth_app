@@ -10,7 +10,7 @@ from modules.photographer import Photographer
 from datetime import datetime
 
 class Viewer(QMainWindow):
-    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer):
+    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount):
         super().__init__()
 
         print("Viewer Started")
@@ -19,12 +19,14 @@ class Viewer(QMainWindow):
         # print(width)
         # print(height)
 
-       
+
         self.hidden_cursor = QCursor()
         self.addToQueue = addToQueue
         self.popFromQueue = popFromQueue
         self.getQueueCount = getQueueCount
         self.closeViewer = closeViewer
+        self.getPrintCount = getPrintCount
+        self.resetPrintCount = resetPrintCount
       
         self.showingCam = False
         self.camImage = None
@@ -54,32 +56,42 @@ class Viewer(QMainWindow):
         self.countdown_label.resize(100,100)
         self.countdown_label.move(int(width/2)-50, height-120) 
 
-        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue, self.getTakenImage)
+        self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue, self.getTakenImage, self.getPrintCount)
         self.photoThread.start()
         self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
 
+    
     def keyPressEvent(self, event) -> None:
+        if (event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter)  and self.getPrintCount() > 699:
+            self.resetPrintCount()
+            im = QPixmap("./assets/images/viewer/not_ready")
+            self.updateImage(im)
+
         if event.key() == Qt.Key_Escape:
             self.photoThread.terminate()
             self.closeViewer()
             self.close()
 
 
+
+
     def mouseDoubleClickEvent(self, e):
         self.addToQueue()
     
     def mousePressEvent(self, event: QMouseEvent) -> None:
+        
+       
 
         if event.x() <= self.cancel_width and event.y() <= self.cancel_height:
-            self.photoThread.terminate()
-            self.closeViewer()
-            self.close()
+                self.photoThread.terminate()
+                self.closeViewer()
+                self.close()
         else:
-            if self.getQueueCount() == 0:
-                self.addToQueue()
-            else:
-                print("Session Already In Queue")
+                if self.getQueueCount() == 0:
+                    self.addToQueue()
+                else:
+                    print("Session Already In Queue")
 
         return super().mousePressEvent(event)
 
@@ -99,8 +111,9 @@ class Viewer(QMainWindow):
     def saveImageToFile(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f'./photos/image_{timestamp}.png'
-        permname = f'./saved_photos/image_{timestamp}.png'
-        cv2.imwrite(permname,self.camImage)
+        # Removed save_photos folder 6/27/2024
+        # permname = f'./saved_photos/image_{timestamp}.png'
+        # cv2.imwrite(permname,self.camImage)
         cv2.imwrite(filename,self.camImage)
         
         print("Picture Taken")

@@ -92,7 +92,7 @@ class Dashboard(QMainWindow):
 
         button_action = QAction("Reset Print Count", self)
         button_action.setStatusTip("Reset Print Count")
-        button_action.triggered.connect(self.showPrintCount)
+        button_action.triggered.connect(self.resetPrintCount)
         toolbar.addAction(button_action)
 
 
@@ -186,7 +186,7 @@ class Dashboard(QMainWindow):
     
     def startViewer(self):
         if self.w is None:
-            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer)
+            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount)
             #Weird behavior
             self.showNormal()
             self.showMinimized()
@@ -254,7 +254,7 @@ class Dashboard(QMainWindow):
         self.layoutWindow = LayoutWindow(self.printerThread)
         self.layoutWindow.show()
     
-    def showPrintCount(self):
+    def resetPrintCount(self):
         self.printer_count = 0
         self.count_label.setText("Total Prints: " + str(self.printer_count))
     
@@ -265,6 +265,8 @@ class Dashboard(QMainWindow):
     def incrementPrintCount(self):
         self.printer_count += 1
         self.count_label.setText("Total Prints: " + str(self.printer_count))
+    def getPrintCount(self):
+        return self.printer_count
 
     def savePrintData(self):
     
@@ -317,7 +319,7 @@ class Dashboard(QMainWindow):
 
 
         
-        return super().closeEvent(event)   
+        return super().closeEvent(event)
 
 
 app = QApplication(sys.argv)
