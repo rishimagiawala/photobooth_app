@@ -10,7 +10,7 @@ from modules.photographer import Photographer
 from datetime import datetime
 
 class Viewer(QMainWindow):
-    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount):
+    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount, getSave):
         super().__init__()
 
         print("Viewer Started")
@@ -27,6 +27,7 @@ class Viewer(QMainWindow):
         self.closeViewer = closeViewer
         self.getPrintCount = getPrintCount
         self.resetPrintCount = resetPrintCount
+        self.getSave = getSave
       
         self.showingCam = False
         self.camImage = None
@@ -111,10 +112,10 @@ class Viewer(QMainWindow):
     def saveImageToFile(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f'./photos/image_{timestamp}.png'
-        # Removed save_photos folder 6/27/2024
-        # permname = f'./saved_photos/image_{timestamp}.png'
-        # cv2.imwrite(permname,self.camImage)
         cv2.imwrite(filename,self.camImage)
+        if self.getSave() is True:
+            permname = f'./saved_photos/image_{timestamp}.png'
+            cv2.imwrite(permname,self.camImage)
         
         print("Picture Taken")
     def updateCountImage(self, image):

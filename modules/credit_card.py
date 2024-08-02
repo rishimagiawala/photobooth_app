@@ -18,7 +18,8 @@ class Reader(QThread):
         with open('./config/card_reader/reader.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.credit_amount = layout_data['credits_trigger']
-            self.port = 'COM' + layout_data['com_port']
+            self.port = 'COM' + str(layout_data['com_port'])
+            print(self.port)
         self.baudrate = 9600
         
         try:

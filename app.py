@@ -60,6 +60,7 @@ class Dashboard(QMainWindow):
         self.printer_count = 0
         self.startup_viewer = None
         self.mobile_view = None
+        self.save_photos = None
         
         
         with open('./config/printing/count.json', 'r') as layout_file:
@@ -67,6 +68,7 @@ class Dashboard(QMainWindow):
             self.printer_count = layout_data['count']
             self.startup_viewer = layout_data['startup_viewer']
             self.mobile_view = layout_data['mobile_view']
+            self.save_photos = layout_data['save_photos']
 
 
         self.setWindowTitle("PhotoBooth Dashboard")
@@ -142,6 +144,10 @@ class Dashboard(QMainWindow):
         self.mobile_view_toggle.setChecked(self.mobile_view)
         self.mobile_view_toggle.stateChanged.connect(self.toggleMobile)
 
+        self.save_photos_toggle = QCheckBox(text="Enable Saving Photos")
+        self.save_photos_toggle.setChecked(self.save_photos)
+        self.save_photos_toggle.stateChanged.connect(self.toggleSave)
+
         layout = QVBoxLayout()
         layout.addWidget(label)
         layout.addWidget(self.text_edit_console)
@@ -149,6 +155,7 @@ class Dashboard(QMainWindow):
         layout.addWidget(self.queue_label)
         layout.addWidget(self.viewer_launch_toggle)
         layout.addWidget(self.mobile_view_toggle)
+        layout.addWidget(self.save_photos_toggle)
 
         widget = QWidget()
         widget.setLayout(layout)
@@ -159,7 +166,6 @@ class Dashboard(QMainWindow):
         self.cameraThread = CameraReader()
         self.cameraThread.start()
         self.cameraThread.image_signal.connect(self.updateCurrentImage)
-       
        #Starting Printer    
         self.printerThread = Printer()
         self.printerThread.start()
@@ -186,7 +192,7 @@ class Dashboard(QMainWindow):
     
     def startViewer(self):
         if self.w is None:
-            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount)
+            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount, self.getSave)
             #Weird behavior
             self.showNormal()
             self.showMinimized()
@@ -259,8 +265,16 @@ class Dashboard(QMainWindow):
         self.count_label.setText("Total Prints: " + str(self.printer_count))
     
     def openReaderEditor(self):
-        self.readerWindow = ReaderWindow(self.cardThread)
+        self.readerWindow = ReaderWindow(self.cardThread, self.restartCardThread)
         self.readerWindow.show()
+
+    def restartCardThread(self):
+        print("Thread Restarting....")
+        self.cardThread.terminate()
+        self.cardThread = None
+        self.cardThread = Reader()
+        self.cardThread.start()
+        self.cardThread.begin_session.connect(self.addToQueue)
 
     def incrementPrintCount(self):
         self.printer_count += 1
@@ -276,6 +290,7 @@ class Dashboard(QMainWindow):
             layout_data['count'] = self.printer_count
             layout_data['startup_viewer']= self.startup_viewer
             layout_data['mobile_view'] = self.mobile_view
+            layout_data['saved_photos'] = self.save_photos
            
         with open('./config/printing/count.json', 'w') as layout_file:
             json.dump(layout_data, layout_file)
@@ -297,6 +312,12 @@ class Dashboard(QMainWindow):
 
         self.savePrintData()
 
+    def toggleSave(self):
+        self.save_photos = self.save_photos_toggle.isChecked()
+        self.savePrintData()
+
+    def getSave(self):
+        return self.save_photos
 
     #Possible error in redundancy   
     def closeEvent(self, event: QCloseEvent) -> None:

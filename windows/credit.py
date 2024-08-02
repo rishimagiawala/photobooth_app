@@ -18,10 +18,10 @@ import json
 
 
 class ReaderWindow(QMainWindow):
-    def __init__(self, reader):
+    def __init__(self, reader, restartCreditThread):
         super().__init__()
         self.reader = reader
-
+        self.restartCreditThread = restartCreditThread
         #TOOLBAR
         toolbar = QToolBar("My main toolbar")
         self.addToolBar(toolbar)
@@ -54,28 +54,29 @@ class ReaderWindow(QMainWindow):
 
         #COM PORT SELECTOR
 
-        comboHLayout = QHBoxLayout()
+        comboHLayout = QVBoxLayout()
         com_label = QLabel("Reader COM Port:")
-        self.reader_combobox = QComboBox()
+        self.reader_port = QSpinBox()
         
-        port_array = ['0',"1", "2",'3','4','5','6','7','8','9']
-        port_array.remove(self.com_port)
-        port_array.insert(0, self.com_port)
+        # port_array = ['0',"1", "2",'3','4','5','6','7','8','9','10','11','12','13','14','15']
+        # port_array.remove(self.com_port)
+        # port_array.insert(0, self.com_port)
 
-        self.reader_combobox.addItems(port_array)
+        # self.reader_port.addItems(port_array)
 
-       
-        self.reader_combobox.currentTextChanged.connect(self.updateCOM)
+        self.reader_port.setMinimum(0)
+        self.reader_port.setValue(int(self.com_port))
+        self.reader_port.valueChanged.connect(self.updateCOM)
 
         comboHLayout.addWidget(com_label)
-        comboHLayout.addWidget(self.reader_combobox)
+        comboHLayout.addWidget(self.reader_port)
         comboHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        comboHLayout.addStretch(1)
+        
         ##############################
 
 
         #Credit Trigger Selector
-        numHLayout = QHBoxLayout()
+        numHLayout = QVBoxLayout()
         credit_label = QLabel("Enter Credit Amount to Trigger: ")
         self.credit_number = QSpinBox()
         self.credit_number.setMinimum(1)
@@ -84,7 +85,7 @@ class ReaderWindow(QMainWindow):
         numHLayout.addWidget(credit_label)
         numHLayout.addWidget(self.credit_number)
         numHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        numHLayout.addStretch(1)
+       
 
 
        
@@ -93,7 +94,7 @@ class ReaderWindow(QMainWindow):
         container = QWidget()
         mainHContainer = QHBoxLayout()
         layout2 = QVBoxLayout()
-        layout2.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        layout2.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.layout = QVBoxLayout()
 
         
@@ -130,3 +131,4 @@ class ReaderWindow(QMainWindow):
             json.dump(layout_data, layout_file)
         
         self.reader.updateCreditAmount(self.credits_trigger)
+        # self.restartCreditThread()
