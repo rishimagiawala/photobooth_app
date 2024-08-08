@@ -100,7 +100,7 @@ class ReaderWindow(QMainWindow):
         
         layout2.addLayout(comboHLayout)
         layout2.addLayout(numHLayout)
-        layout2.addWidget(QLabel("Restart Program After Saving Settings"))
+        layout2.addWidget(QLabel("If there are any issues, restart the program after saving(Not required)"))
        
        
         
@@ -119,8 +119,13 @@ class ReaderWindow(QMainWindow):
     
     def saveReader(self):
         layout_data = None
+        com_changed = False
         with open('./config/card_reader/reader.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
+
+            if layout_data['com_port'] != self.com_port:
+                com_changed = True
+
             layout_data['credits_trigger'] = self.credits_trigger
             layout_data['com_port'] = self.com_port
             
@@ -131,4 +136,5 @@ class ReaderWindow(QMainWindow):
             json.dump(layout_data, layout_file)
         
         self.reader.updateCreditAmount(self.credits_trigger)
-        # self.restartCreditThread()
+        if com_changed:
+            self.restartCreditThread()

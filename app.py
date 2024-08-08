@@ -61,7 +61,7 @@ class Dashboard(QMainWindow):
         self.startup_viewer = None
         self.mobile_view = None
         self.save_photos = None
-        
+        self.angle = None
         
         with open('./config/printing/count.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
@@ -192,7 +192,8 @@ class Dashboard(QMainWindow):
     
     def startViewer(self):
         if self.w is None:
-            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount, self.getSave)
+            self.loadAngle()
+            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount, self.getSave, self.getAngle)
             #Weird behavior
             self.showNormal()
             self.showMinimized()
@@ -270,6 +271,7 @@ class Dashboard(QMainWindow):
 
     def restartCardThread(self):
         print("Thread Restarting....")
+        self.cardThread.closeSerial()
         self.cardThread.terminate()
         self.cardThread = None
         self.cardThread = Reader()
@@ -318,6 +320,13 @@ class Dashboard(QMainWindow):
 
     def getSave(self):
         return self.save_photos
+    def loadAngle(self):
+        with open('./config/printing/layout.json', 'r') as layout_file:
+            layout_data = json.load(layout_file)
+            self.angle = layout_data['angle']
+
+    def getAngle(self):
+        return self.angle
 
     #Possible error in redundancy   
     def closeEvent(self, event: QCloseEvent) -> None:

@@ -60,6 +60,12 @@ class Reader(QThread):
         self.ser.close()
         self.finished.emit()
 
+    def closeSerial(self):
+        try:
+            self.ser.close()
+        except:
+            pass
+
     def removeCredits(self):
         if self.credit_count >= 3:
             self.credit_count -= 3

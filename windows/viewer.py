@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination
-from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor
+from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor, QTransform
 from time import sleep
 import sys
 from modules.camera import CameraReader
@@ -8,9 +8,9 @@ import cv2
 from modules.credit_card import Reader
 from modules.photographer import Photographer
 from datetime import datetime
-
+import imutils
 class Viewer(QMainWindow):
-    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount, getSave):
+    def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount, getSave, getAngle):
         super().__init__()
 
         print("Viewer Started")
@@ -28,6 +28,7 @@ class Viewer(QMainWindow):
         self.getPrintCount = getPrintCount
         self.resetPrintCount = resetPrintCount
         self.getSave = getSave
+        self.getAngle = getAngle
       
         self.showingCam = False
         self.camImage = None
@@ -104,7 +105,10 @@ class Viewer(QMainWindow):
     def updateViewerCamImage(self, image):
         self.camImage = image
         if self.showingCam is True:
+            image = imutils.rotate(image, self.getAngle())
+            
             qt_img = self.convert_cv_qt(image)
+            
             self.takenImage = qt_img
             self.image_label.setPixmap(qt_img)
     def toggleShowingCam(self, toggle):

@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QToolBar,
     QCheckBox,
     QColorDialog,
-    QPushButton
+    QPushButton,
+    QSpinBox
     
 )
 import json
@@ -196,6 +197,7 @@ class LayoutWindow(QMainWindow):
         self.background_path = None
         self.include_background = None
         self.background_color = None
+        self.angle = None
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             # print(layout_data)
@@ -207,6 +209,7 @@ class LayoutWindow(QMainWindow):
             self.background_path = layout_data['background_path']
             self.include_background = layout_data['include_background']
             self.background_color = layout_data['background_color']
+            self.angle = layout_data['angle']
         ##################################
         self.logo_arr = os.listdir('./assets/images/logos')
 
@@ -294,6 +297,18 @@ class LayoutWindow(QMainWindow):
         logoSquareHLayout.addStretch(1)
     ##############################
 
+        #Angle Selection
+        angleSquareHLayout = QHBoxLayout()
+        angle_label = QLabel("Viewer Image Angle:")
+        self.angle_spin = QSpinBox()
+        self.angle_spin.setMaximum(359)
+        self.angle_spin.setValue(self.angle)
+        self.angle_spin.valueChanged.connect(self.updateAngle)
+        angleSquareHLayout.addWidget(angle_label)
+        angleSquareHLayout.addWidget(self.angle_spin)
+        
+        
+       
 
 
     #     #Background Selector
@@ -344,6 +359,7 @@ class LayoutWindow(QMainWindow):
         layout2.addLayout(comboHLayout)
         layout2.addLayout(logoHLayout)
         layout2.addLayout(logoSquareHLayout)
+        layout2.addLayout(angleSquareHLayout)
         # layout2.addLayout(backgroundHLayout)
         # layout2.addLayout(backgroundSquareHLayout)
         # layout2.addWidget(colorButton)
@@ -404,6 +420,9 @@ class LayoutWindow(QMainWindow):
 
     def updateBackground(self, text):
         self.background_path = text
+    
+    def updateAngle(self, angle):
+        self.angle = angle
 
     def openLogoFolder(self):
         path = "./assets/images/logos"
@@ -422,6 +441,7 @@ class LayoutWindow(QMainWindow):
             layout_data['logo_path'] = self.logo_path
             layout_data['num_of_photos'] = self.num_of_photos
             layout_data['logo_square'] = self.checkBox.isChecked()
+            layout_data['angle'] = self.angle
             # layout_data['background_path'] = self.background_path
             # layout_data['include_background'] = self.bcheckBox.isChecked()
             layout_data['background_color'] = self.background_color

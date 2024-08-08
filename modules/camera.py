@@ -14,7 +14,7 @@ class CameraReader(QThread):
         print("Camera Module Started")
         try:
             
-            self.cap = cv2.VideoCapture(2)
+            self.cap = cv2.VideoCapture(0)
             
             self.cap.set(cv2.CAP_PROP_FPS, 60)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) 
