@@ -466,6 +466,7 @@ class LayoutWindow(QMainWindow):
     def printTest(self):
         arr = os.listdir('./test_photos')
         arr = arr[:self.num_of_photos]
+        # Cant I change this to do just printImages?
         printTestImages(arr)
         self.printer.emitPrint()
 
