@@ -173,7 +173,7 @@ class LayoutWindow(QMainWindow):
         button_action = QAction("Open Background Folder", self)
         button_action.setStatusTip("Open Background Folder")
         button_action.triggered.connect(self.openBackgroundFolder)
-        toolbar.addAction(button_action)
+        # toolbar.addAction(button_action)
 
         button_action = QAction("Save Layout", self)
         button_action.setStatusTip("Save Layout")
