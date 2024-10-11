@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     
 )
 import json
-from printing import printTestImages
+from printing import printImages
 
 
 
@@ -189,7 +189,7 @@ class LayoutWindow(QMainWindow):
         self.setWindowTitle("Layout Editor")
         self.resize(300,400)
         #Initializing Layout Variables:
-
+        self.logo2_path = None
         self.logo_position = None
         self.num_of_photos = None
         self.logo_path = None
@@ -201,7 +201,7 @@ class LayoutWindow(QMainWindow):
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             # print(layout_data)
-
+            self.logo2_path = layout_data['logo2_path']
             self.logo_path = layout_data['logo_path']
             self.num_of_photos = layout_data['num_of_photos']
             self.logo_position = layout_data['logo_position']
@@ -216,6 +216,11 @@ class LayoutWindow(QMainWindow):
         self.logo_arr = ['./assets/images/logos/{0}'.format(element) for element in self.logo_arr]
         self.logo_arr.remove(self.logo_path)
         self.logo_arr.insert(0, self.logo_path)
+
+        self.logo2_arr = os.listdir('./assets/images/logos')
+        self.logo2_arr = ['./assets/images/logos/{0}'.format(element) for element in self.logo2_arr]
+        self.logo2_arr.remove(self.logo2_path)
+        self.logo2_arr.insert(0, self.logo2_path)
 
 
         self.background_arr = os.listdir('./assets/images/background')
@@ -269,7 +274,7 @@ class LayoutWindow(QMainWindow):
 
 
 
-        #Logo Selector
+        #Logo 1 Selector
 
         logoHLayout = QHBoxLayout()
         logos_label = QLabel("Select Logo:")
@@ -282,6 +287,22 @@ class LayoutWindow(QMainWindow):
         logoHLayout.addWidget(self.logo_combobox)
         logoHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         logoHLayout.addStretch(1)
+        ##############################
+
+
+         #Logo 2 Selector
+
+        logo2HLayout = QHBoxLayout()
+        logos2_label = QLabel("Select Second Logo:")
+        self.logo2_combobox = QComboBox()
+        
+        self.logo2_combobox.addItems(self.logo2_arr)
+        self.logo2_combobox.currentTextChanged.connect(self.updateLogo2)
+
+        logo2HLayout.addWidget(logos2_label)
+        logo2HLayout.addWidget(self.logo2_combobox)
+        logo2HLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        logo2HLayout.addStretch(1)
         ##############################
 
         #Logo Square Checkbox
@@ -358,8 +379,10 @@ class LayoutWindow(QMainWindow):
         
         layout2.addLayout(comboHLayout)
         layout2.addLayout(logoHLayout)
+        layout2.addLayout(logo2HLayout)
         layout2.addLayout(logoSquareHLayout)
         layout2.addLayout(angleSquareHLayout)
+        
         # layout2.addLayout(backgroundHLayout)
         # layout2.addLayout(backgroundSquareHLayout)
         # layout2.addWidget(colorButton)
@@ -418,6 +441,10 @@ class LayoutWindow(QMainWindow):
         self.logo_path = text
         self.changeLayout()
 
+    def updateLogo2(self, text):
+        self.logo2_path = text
+        self.changeLayout()
+
     def updateBackground(self, text):
         self.background_path = text
     
@@ -439,6 +466,7 @@ class LayoutWindow(QMainWindow):
         with open('./config/printing/layout.json', 'r') as layout_file:
             layout_data = json.load(layout_file)
             layout_data['logo_path'] = self.logo_path
+            layout_data['logo2_path'] = self.logo2_path
             layout_data['num_of_photos'] = self.num_of_photos
             layout_data['logo_square'] = self.checkBox.isChecked()
             layout_data['angle'] = self.angle
@@ -467,7 +495,7 @@ class LayoutWindow(QMainWindow):
         arr = os.listdir('./test_photos')
         arr = arr[:self.num_of_photos]
         # Cant I change this to do just printImages?
-        printTestImages(arr)
+        printImages(arr, True)
         self.printer.emitPrint()
 
     def openColorDialog(self):
