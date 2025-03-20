@@ -1,6 +1,6 @@
 import random
-import win32print
-import win32ui
+# import win32print
+# import win32ui
 from PIL import Image, ImageWin, ImageOps, ImageColor
 import os
 import json
