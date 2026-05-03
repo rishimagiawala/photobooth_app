@@ -56,7 +56,10 @@ class Photographer(QThread):
                     sleep(1)
                     self.change_count_signal.emit(str(app_path('assets', 'images', 'viewer', 'countdown-1.png')))
                     sleep(1)
-                    self.takePicture()
+                    if not self.takePicture():
+                        print("Waiting for camera frame before retrying picture")
+                        sleep(1)
+                        self.takePicture()
                     self.change_count_signal.emit('')
                     self.toggleCamStream(False)
                     sleep(2)

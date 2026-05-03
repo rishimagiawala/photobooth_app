@@ -110,14 +110,22 @@ class Viewer(QMainWindow):
     def toggleShowingCam(self, toggle):
         self.showingCam =  toggle
     def saveImageToFile(self):
+        if self.camImage is None or self.camImage.size == 0:
+            print("Picture skipped: camera frame is not ready")
+            return False
+
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         filename = app_path('photos', f'image_{timestamp}.png')
-        cv2.imwrite(str(filename),self.camImage)
+        if not cv2.imwrite(str(filename),self.camImage):
+            print("Picture skipped: failed to save camera frame")
+            return False
+
         if self.getSave() is True:
             permname = app_path('saved_photos', f'image_{timestamp}.png')
             cv2.imwrite(str(permname),self.camImage)
         
         print("Picture Taken")
+        return True
     def updateCountImage(self, image):
         self.countdown_label.setPixmap(QPixmap(image) if image else QPixmap())
     def getTakenImage(self):
