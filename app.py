@@ -106,6 +106,7 @@ class Dashboard(QMainWindow):
        
 
         menu = self.menuBar()
+        menu.setNativeMenuBar(False)
 
 
       
@@ -117,17 +118,20 @@ class Dashboard(QMainWindow):
         button_action.setStatusTip("Take Picture")
         button_action.triggered.connect(self.saveImageToFile)
         testing_menu.addAction(button_action)
+        toolbar.addAction(button_action)
 
 
         button_action = QAction("Edit Layout Configuration", self)
         button_action.setStatusTip("Edit layout")
         button_action.triggered.connect(self.openLayoutEditor)
         config_menu.addAction(button_action)
+        toolbar.addAction(button_action)
 
         button_action = QAction("Edit Reader Properties", self)
         button_action.setStatusTip("Edit Reader")
         button_action.triggered.connect(self.openReaderEditor)
         config_menu.addAction(button_action)
+        toolbar.addAction(button_action)
         
 
         self.text_edit_console = QTextEdit(self)
