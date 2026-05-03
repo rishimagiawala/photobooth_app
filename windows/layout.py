@@ -1,6 +1,6 @@
 import os
-from PySide6.QtCore import QMimeData, Qt, Signal, QSize
-from PySide6.QtGui import QDrag, QPixmap, QAction
+from PySide6.QtCore import QMimeData, Qt, Signal, QSize, QUrl
+from PySide6.QtGui import QDrag, QPixmap, QAction, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 import json
 from printing import printImages
+from paths import app_path, display_path, resolve_app_path
 
 
 
@@ -198,7 +199,7 @@ class LayoutWindow(QMainWindow):
         self.include_background = None
         self.background_color = None
         self.angle = None
-        with open('./config/printing/layout.json', 'r') as layout_file:
+        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             # print(layout_data)
             self.logo2_path = layout_data['logo2_path']
@@ -211,20 +212,20 @@ class LayoutWindow(QMainWindow):
             self.background_color = layout_data['background_color']
             self.angle = layout_data['angle']
         ##################################
-        self.logo_arr = os.listdir('./assets/images/logos')
+        self.logo_arr = os.listdir(app_path('assets', 'images', 'logos'))
 
-        self.logo_arr = ['./assets/images/logos/{0}'.format(element) for element in self.logo_arr]
+        self.logo_arr = [display_path(app_path('assets', 'images', 'logos', element)) for element in self.logo_arr]
         self.logo_arr.remove(self.logo_path)
         self.logo_arr.insert(0, self.logo_path)
 
-        self.logo2_arr = os.listdir('./assets/images/logos')
-        self.logo2_arr = ['./assets/images/logos/{0}'.format(element) for element in self.logo2_arr]
+        self.logo2_arr = os.listdir(app_path('assets', 'images', 'logos'))
+        self.logo2_arr = [display_path(app_path('assets', 'images', 'logos', element)) for element in self.logo2_arr]
         self.logo2_arr.remove(self.logo2_path)
         self.logo2_arr.insert(0, self.logo2_path)
 
 
-        self.background_arr = os.listdir('./assets/images/background')
-        self.background_arr = ['./assets/images/background/{0}'.format(element) for element in self.background_arr]
+        self.background_arr = os.listdir(app_path('assets', 'images', 'background'))
+        self.background_arr = [display_path(app_path('assets', 'images', 'background', element)) for element in self.background_arr]
         self.background_arr.remove(self.background_path)
         self.background_arr.insert(0, self.background_path)
 
@@ -242,7 +243,7 @@ class LayoutWindow(QMainWindow):
             
             item = DragItem(l)
             if l == 'LOGO':
-                q_img = QPixmap(self.logo_path)
+                q_img = QPixmap(str(resolve_app_path(self.logo_path)))
                
                 item.setPixmap(q_img)
                 item.setScaledContents(True)
@@ -408,7 +409,7 @@ class LayoutWindow(QMainWindow):
             item = DragItem(l)
             item.set_data(l)  # Store the data.
             if l == 'LOGO':
-                q_img = QPixmap(self.logo_path)
+                q_img = QPixmap(str(resolve_app_path(self.logo_path)))
                
                 item.setPixmap(q_img)
                 item.setScaledContents(True)
@@ -452,18 +453,16 @@ class LayoutWindow(QMainWindow):
         self.angle = angle
 
     def openLogoFolder(self):
-        path = "./assets/images/logos"
-        path = os.path.realpath(path)
-        os.startfile(path)  
+        path = app_path("assets", "images", "logos")
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def openBackgroundFolder(self):
-        path = "./assets/images/background"
-        path = os.path.realpath(path)
-        os.startfile(path)  
+        path = app_path("assets", "images", "background")
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def saveLayout(self):
         layout_data = None
-        with open('./config/printing/layout.json', 'r') as layout_file:
+        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             layout_data['logo_path'] = self.logo_path
             layout_data['logo2_path'] = self.logo2_path
@@ -487,12 +486,12 @@ class LayoutWindow(QMainWindow):
 
             
            
-        with open('./config/printing/layout.json', 'w') as layout_file:
+        with open(app_path('config', 'printing', 'layout.json'), 'w') as layout_file:
             json.dump(layout_data, layout_file)
         
         self.printer.updatePhotoCount(layout_data['num_of_photos'])
     def printTest(self):
-        arr = os.listdir('./test_photos')
+        arr = sorted(os.listdir(app_path('test_photos')))
         arr = arr[:self.num_of_photos]
         # Cant I change this to do just printImages?
         printImages(arr, True)

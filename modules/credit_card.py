@@ -4,6 +4,7 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from time import sleep
 import serial, sys, time
+from paths import app_path
 
 class Reader(QThread):
     def __init__(self):
@@ -15,18 +16,19 @@ class Reader(QThread):
         self.credit_amount = None
         self.port = None
 
-        with open('./config/card_reader/reader.json', 'r') as layout_file:
+        with open(app_path('config', 'card_reader', 'reader.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.credit_amount = layout_data['credits_trigger']
-            self.port = 'COM' + str(layout_data['com_port'])
+            self.port = layout_data['serial_port']
             print(self.port)
         self.baudrate = 9600
+        self.ser = None
         
         try:
             self.ser = serial.Serial(self.port, self.baudrate, timeout=0.001)
             print("Credit Card Reader Module Started")
-        except:
-            pass
+        except serial.SerialException as error:
+            print(f"Credit Card Reader unavailable at {self.port}: {error}")
         self.credit = 0
         
        
@@ -39,12 +41,17 @@ class Reader(QThread):
         
 
         while True:
+            if self.ser is None:
+                sleep(1)
+                continue
+
             try:
                 data = self.ser.read(1)
-                
-            except:
-                print("Credit Card Reader Failed, Please Confirm COM Port Settings and Restart Program")
-            data += self.ser.read(self.ser.inWaiting())
+                data += self.ser.read(self.ser.inWaiting())
+            except serial.SerialException:
+                print("Credit Card Reader Failed, Please Confirm Serial Port Settings and Restart Program")
+                sleep(1)
+                continue
             integer_value = int.from_bytes(data) 
             # print(data)
             if len(data) > 0:

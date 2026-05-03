@@ -1,216 +1,146 @@
-import random
-import win32print
-import win32ui
-from PIL import Image, ImageWin, ImageOps, ImageColor
-import os
 import json
+import os
+import shlex
+import subprocess
+from datetime import datetime
+
+from PIL import Image, ImageColor, ImageOps
+
+from paths import app_path, ensure_runtime_dirs, resolve_app_path
+
 
 right_off = 6
-def printImages(image_arr, test = False):
-    print("Print Job Recieved")
-    image_height = None
-    logo_height = None
-    marginx = None
-    marginy = None
-    logo_rotate= True
-    logo_path = None
-    logo2_path = None
-    logo_square = None
-    image_marginx =None
-    image_marginy =None
-    num_of_images =  len(image_arr)
-    background_path = None
-    include_background = None
-    transparent_tuple = (255,255,255,0)
+STRIP_HEIGHT = 1200
 
-    logo_pos = None
-    with open('./config/printing/layout.json', 'r') as layout_file:
+
+def printImages(image_arr, test=False):
+    print("Print Job Received")
+    strip_path = render_strip(image_arr, test)
+    _submit_to_cups(strip_path)
+    return strip_path
+
+
+def render_strip(image_arr, test=False):
+    ensure_runtime_dirs()
+    with open(app_path("config", "printing", "layout.json"), "r") as layout_file:
         layout_data = json.load(layout_file)
-        # print(layout_data)
 
-        image_height = layout_data['image_height']
-        logo_height = layout_data['logo_height']
-        marginx = layout_data['marginx']
-        marginy = layout_data['marginy']
-        logo_rotate = layout_data['logo_rotate']
-        logo_path = layout_data['logo_path']
-        logo2_path = layout_data['logo2_path']
-        image_marginx = layout_data['image_marginx']
-        image_marginy = layout_data['image_marginy']
-        logo_pos = layout_data['logo_position']
-        logo_square = layout_data['logo_square']
-        background_path = layout_data['background_path']
-        include_background = layout_data['include_background']
-        background_color = layout_data['background_color']
+    background_color = layout_data["background_color"]
+    transparent_tuple = ImageColor.getcolor(background_color, "RGB") + (0,)
+    logo_pos = layout_data["logo_position"]
 
-        transparent_tuple = ImageColor.getcolor(background_color, "RGB") + (0,) 
+    image_paths = [_photo_path(element, test) for element in image_arr]
+    image_paths.insert(logo_pos, resolve_app_path(layout_data["logo_path"]))
 
-    
+    logo2 = Image.open(resolve_app_path(layout_data["logo2_path"])).convert("RGBA")
+    logo2 = logo2.rotate(90, expand=True)
+    logo2 = makeTransparent(logo2, transparent_tuple)
 
+    image_height = layout_data["image_height"]
+    logo_height = layout_data["logo_height"]
+    marginy = layout_data["marginy"]
+    logo_square = layout_data["logo_square"]
+    logo_rotate = layout_data["logo_rotate"]
+    total_width = sum(logo_height if i == logo_pos else image_height for i in range(len(image_paths))) + marginy + 40
+    canvas = Image.new("RGBA", (total_width, STRIP_HEIGHT), background_color)
 
-
-
-    if test == False:
-        image_arr = ['./photos/{0}'.format(element) for element in image_arr]
-    elif test == True:
-        image_arr = ['./test_photos/{0}'.format(element) for element in image_arr]
-    image_arr.insert(logo_pos, logo_path)
-    
-    bmp_logo_2 = Image.open (logo2_path).convert("RGBA")
-    bmp_logo_2.has_transparency_data = True
-    bmp_logo_2 = bmp_logo_2.rotate (90, expand=True)        
-    bmp_logo_2 = makeTransparent(bmp_logo_2, transparent_tuple)
-    dib_logo2 = ImageWin.Dib (bmp_logo_2)
-
-    PHYSICALWIDTH = 110
-    PHYSICALHEIGHT = 111
-   
-
-    printer_name = win32print.GetDefaultPrinter ()
-    file_name = "photo_strip"
-
-  
-    hDC = win32ui.CreateDC ()
-    hDC.CreatePrinterDC (printer_name)
-    # printable_area = hDC.GetDeviceCaps (HORZRES), hDC.GetDeviceCaps (VERTRES)
-
-    printer_size = hDC.GetDeviceCaps (PHYSICALWIDTH), hDC.GetDeviceCaps (PHYSICALHEIGHT)
-  
-    #
-    hDC.StartDoc (file_name)
-    hDC.StartPage ()
-
-#Beginning Background Code
-    # Removing this - 6/27/2024
-    # if include_background == True:
-    #     bmp = Image.open(background_path)
-    #     bmp = changeBackgroundColor(bmp, transparent_tuple)
-    #     dib = ImageWin.Dib(bmp)
-    #     dib.draw (hDC.GetHandleOutput (), (0,0, int(printer_size[0]), int(printer_size[1])))
-    #End comment 
-        
-#################
-    # print("Printer Y Size: " + str(printer_size[0]))
-    # print("Printer X Size: " + str(printer_size[1]/2))
-    marginx =  10
+    marginx = 10
     image_offset = 0
-    for i in range(len(image_arr)):
-        bmp = Image.open (image_arr[i]).convert("RGBA")
-        bmp.has_transparency_data = True
-        # print(bmp.size[0])
-        # print(bmp.size[1])
-        if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate==True):
-            bmp = bmp.rotate (90, expand=True)
+    for i, image_path in enumerate(image_paths):
+        bmp = Image.open(image_path).convert("RGBA")
+        if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate is True):
+            bmp = bmp.rotate(90, expand=True)
         if logo_pos == i:
-            
             bmp = makeTransparent(bmp, transparent_tuple)
 
-    
-        init = 20
-        dib = ImageWin.Dib (bmp)
-        if i == 0:
-            if logo_pos !=i:
-
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
-                image_offset += image_height
-            else:
-                if logo_square == False:
-                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
-                    dib_logo2.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
-                elif logo_square == True:
-                    marginx = 54
-                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
-                    
-                    dib_logo2.draw (hDC.GetHandleOutput (), ((image_offset) + marginy+init,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
-                    marginx = 10
-                    
-                image_offset += logo_height 
-            
-            if logo_pos != i and test == False:
-                os.remove(image_arr[i])
+        init = 20 if i == 0 else 0
+        if logo_pos != i:
+            boxes = [
+                (image_offset + marginy + init, marginx * 3 + right_off, image_offset + image_height, int(STRIP_HEIGHT / 2) - (marginx * 2)),
+                (image_offset + marginy + init, int(STRIP_HEIGHT / 2) + marginx, image_offset + image_height, STRIP_HEIGHT - (marginx * 4)),
+            ]
+            _paste_fit(canvas, bmp, boxes[0])
+            _paste_fit(canvas, bmp, boxes[1])
+            image_offset += image_height
+            if test is False:
+                os.remove(image_path)
         else:
-            if logo_pos !=i:
-
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + image_height, int(printer_size[1]/2)-(marginx*2)))
-                dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + image_height, int(printer_size[1]-(marginx*4))))
-                image_offset += image_height
+            if logo_square is False:
+                boxes = [
+                    (image_offset + marginy + init, marginx * 3 + right_off, image_offset + logo_height, int(STRIP_HEIGHT / 2) - (marginx * 2)),
+                    (image_offset + marginy + init, int(STRIP_HEIGHT / 2) + marginx, image_offset + logo_height, STRIP_HEIGHT - (marginx * 4)),
+                ]
             else:
-                if logo_square == False:
-                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,marginx*3+right_off, image_offset + logo_height, int(printer_size[1]/2)-(marginx*2)))
-                    dib_logo2.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx), image_offset + logo_height, int(printer_size[1]-(marginx*4))))
-                elif logo_square == True:
-                    marginx = 54
-                    dib.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(marginx*2.7)+right_off, image_offset + logo_height, int(printer_size[1]/2-(marginx*2.3))))
-                    
-                    dib_logo2.draw (hDC.GetHandleOutput (), ((image_offset) + marginy,int(printer_size[1]/2)+(marginx+70), image_offset + logo_height, int(printer_size[1]-(marginx*4-70))))
-                    marginx = 10
-                    
-                image_offset += logo_height 
-            
-            if logo_pos != i and test==False:
-                os.remove(image_arr[i])
+                square_margin = 54
+                boxes = [
+                    (image_offset + marginy + init, int(square_margin * 2.7) + right_off, image_offset + logo_height, int(STRIP_HEIGHT / 2 - (square_margin * 2.3))),
+                    (image_offset + marginy + init, int(STRIP_HEIGHT / 2) + (square_margin + 70), image_offset + logo_height, int(STRIP_HEIGHT - (square_margin * 4 - 70))),
+                ]
+            _paste_fit(canvas, bmp, boxes[0])
+            _paste_fit(canvas, logo2, boxes[1])
+            image_offset += logo_height
 
-        # else:
-
-        #     dib.draw (hDC.GetHandleOutput (), ((image_height*i) + marginy,marginx*2, image_height*i + image_height, int(printer_size[1]/2)-(marginx*2)))
-        #     dib.draw (hDC.GetHandleOutput (), ((image_height*i) + marginy,int(printer_size[1]/2)+(marginx), image_height*i + image_height, int(printer_size[1])-(marginx*2)))
-
-   
-
-   
-
-    hDC.EndPage ()
-    hDC.EndDoc ()
-    hDC.DeleteDC ()
-
-
+    output_path = app_path("printed_strips", f"photo_strip_{datetime.now().strftime('%Y%m%d%H%M%S')}.png")
+    canvas.convert("RGB").save(output_path)
+    print(f"Rendered print strip: {output_path}")
+    return output_path
 
 
 def makeTransparent(img, transparent_tuple):
     rgba = img.convert("RGBA")
-    datas = rgba.getdata() 
-  
-    newData = [] 
-    for item in datas: 
-        if item[3] == 0:  # finding black colour by its RGB value 
-            # storing a transparent value when we find a black colour 
-           
-            newData.append(transparent_tuple) 
-        else: 
-            newData.append(item)  # other colours remain unchanged 
-    
-    rgba.putdata(newData) 
+    datas = rgba.getdata()
 
+    newData = []
+    for item in datas:
+        if item[3] == 0:
+            newData.append(transparent_tuple)
+        else:
+            newData.append(item)
+
+    rgba.putdata(newData)
     return rgba
 
-# Deprecated function 6/27/2024
-# def get_random_pixel_rgb(image):
-#     # Get image dimensions
-#     width, height = image.size
-    
-#     # Get random coordinates
-#     random_x = random.randint(0, width - 1)
-#     random_y = random.randint(0, height - 1)
-
-#     # Get RGB values of the random pixel
-#     rgb_value = image.getpixel((random_x, random_y))
-
-#     transparent_tuple = rgb_value + (0,)
-
-#     return transparent_tuple
 
 def changeBackgroundColor(img, transparent_tuple):
     rgba = img.convert("RGBA")
-    datas = rgba.getdata() 
-  
-    newData = [] 
-    for item in datas: 
-        newData.append(transparent_tuple) 
-        
-    
-    rgba.putdata(newData) 
+    datas = rgba.getdata()
 
+    newData = []
+    for item in datas:
+        newData.append(transparent_tuple)
+
+    rgba.putdata(newData)
     return rgba
-    
-    
+
+
+def _photo_path(filename, test):
+    directory = "test_photos" if test else "photos"
+    return app_path(directory, filename)
+
+
+def _paste_fit(canvas, image, box):
+    left, top, right, bottom = box
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    fitted = ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS)
+    canvas.alpha_composite(fitted, (left, top))
+
+
+def _submit_to_cups(strip_path):
+    command = ["lp"]
+    printer_name = os.environ.get("PHOTOBOOTH_PRINTER")
+    if printer_name:
+        command.extend(["-d", printer_name])
+
+    lp_options = os.environ.get("PHOTOBOOTH_LP_OPTIONS")
+    if lp_options:
+        command.extend(shlex.split(lp_options))
+
+    command.append(str(strip_path))
+    try:
+        subprocess.run(command, check=True)
+        print("Print job submitted to CUPS")
+    except FileNotFoundError:
+        print("Could not submit print job: 'lp' command is not installed")
+    except subprocess.CalledProcessError as error:
+        print(f"Could not submit print job: lp exited with status {error.returncode}")

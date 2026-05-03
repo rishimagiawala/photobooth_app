@@ -9,6 +9,7 @@ from modules.credit_card import Reader
 from modules.photographer import Photographer
 from datetime import datetime
 import imutils
+from paths import app_path
 class Viewer(QMainWindow):
     def __init__(self, addToQueue, popFromQueue, getQueueCount, closeViewer, getPrintCount, resetPrintCount, getSave, getAngle):
         super().__init__()
@@ -20,7 +21,6 @@ class Viewer(QMainWindow):
         # print(height)
 
 
-        self.hidden_cursor = QCursor()
         self.addToQueue = addToQueue
         self.popFromQueue = popFromQueue
         self.getQueueCount = getQueueCount
@@ -33,6 +33,7 @@ class Viewer(QMainWindow):
         self.showingCam = False
         self.camImage = None
         self.takenImage = QPixmap()
+        self._closing = False
 
         self.setWindowTitle("Photobooth Window")
         self.showFullScreen()
@@ -42,11 +43,11 @@ class Viewer(QMainWindow):
 
         self.cancel_width = int(.15* width)
         self.cancel_height = int(.1 * height)
-        self.hidden_cursor.setPos(width+300,0)
+        self.setCursor(Qt.BlankCursor)
         # print(width)
         # print(height)
         self.image_label = QLabel()
-        self.im = QPixmap("./assets/images/viewer/not_ready")
+        self.im = QPixmap(str(app_path("assets", "images", "viewer", "not_ready.png")))
         self.image_label.setPixmap(self.im)
         
         self.image_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
@@ -67,12 +68,9 @@ class Viewer(QMainWindow):
     def keyPressEvent(self, event) -> None:
         if (event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter)  and self.getPrintCount() > 699:
             self.resetPrintCount()
-            im = QPixmap("./assets/images/viewer/not_ready")
-            self.updateImage(im)
+            self.updateImage(str(app_path("assets", "images", "viewer", "not_ready.png")))
 
         if event.key() == Qt.Key_Escape:
-            self.photoThread.terminate()
-            self.closeViewer()
             self.close()
 
 
@@ -86,8 +84,6 @@ class Viewer(QMainWindow):
        
 
         if event.x() <= self.cancel_width and event.y() <= self.cancel_height:
-                self.photoThread.terminate()
-                self.closeViewer()
                 self.close()
         else:
                 if self.getQueueCount() == 0:
@@ -98,8 +94,8 @@ class Viewer(QMainWindow):
         return super().mousePressEvent(event)
 
    
-    def updateImage(self,image):
-        self.image_label.setPixmap(image)
+    def updateImage(self, image):
+        self.image_label.setPixmap(QPixmap(image) if image else QPixmap())
 
 
     def updateViewerCamImage(self, image):
@@ -115,15 +111,15 @@ class Viewer(QMainWindow):
         self.showingCam =  toggle
     def saveImageToFile(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f'./photos/image_{timestamp}.png'
-        cv2.imwrite(filename,self.camImage)
+        filename = app_path('photos', f'image_{timestamp}.png')
+        cv2.imwrite(str(filename),self.camImage)
         if self.getSave() is True:
-            permname = f'./saved_photos/image_{timestamp}.png'
-            cv2.imwrite(permname,self.camImage)
+            permname = app_path('saved_photos', f'image_{timestamp}.png')
+            cv2.imwrite(str(permname),self.camImage)
         
         print("Picture Taken")
     def updateCountImage(self, image):
-        self.countdown_label.setPixmap(image)
+        self.countdown_label.setPixmap(QPixmap(image) if image else QPixmap())
     def getTakenImage(self):
         return self.takenImage
         
@@ -141,9 +137,11 @@ class Viewer(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         
         # print("Viewer was Closed")
-        self.photoThread.terminate()
-        self.closeViewer()
-        self.close()
+        if not self._closing:
+            self._closing = True
+            self.photoThread.terminate()
+            self.photoThread.wait(1000)
+            self.closeViewer()
         
         
         return super().closeEvent(event)

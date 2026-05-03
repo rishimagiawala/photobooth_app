@@ -8,6 +8,7 @@ import serial, sys, time
 import os
 from printing import printImages
 import json
+from paths import app_path, ensure_runtime_dirs
 
 class Printer(QThread):
     def __init__(self):
@@ -17,7 +18,8 @@ class Printer(QThread):
         
         print("Printer Module Started")
         self.num_of_photos = None
-        with open('./config/printing/layout.json', 'r') as layout_file:
+        ensure_runtime_dirs()
+        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.num_of_photos = layout_data['num_of_photos']
         
@@ -28,12 +30,14 @@ class Printer(QThread):
     def run(self):
         while True:
           
-            arr = os.listdir('./photos')
+            photos_dir = app_path('photos')
+            arr = sorted(os.listdir(photos_dir))
             if len(arr) >= self.num_of_photos:
                 print("Sending Job to Printer...")
                 printImages(arr)
                 self.beginPrint.emit()
                 self.current_print_count += 1
+            sleep(1)
 
     def updatePhotoCount(self, num_of_photos):
         self.num_of_photos = num_of_photos

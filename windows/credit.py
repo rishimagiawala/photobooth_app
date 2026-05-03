@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+
+from serial.tools import list_ports
 from PySide6.QtCore import QMimeData, Qt, Signal, QSize
 from PySide6.QtGui import QDrag, QPixmap, QAction
 from PySide6.QtWidgets import (
@@ -11,7 +14,9 @@ from PySide6.QtWidgets import (
     QComboBox,
     QToolBar,
     QCheckBox,
-    QSpinBox
+    QSpinBox,
+    QLineEdit,
+    QPushButton
     
 )
 import json
@@ -32,6 +37,11 @@ class ReaderWindow(QMainWindow):
         button_action.triggered.connect(self.saveReader)
         toolbar.addAction(button_action)
 
+        button_action = QAction("Refresh Serial Ports", self)
+        button_action.setStatusTip("Refresh detected Linux serial devices")
+        button_action.triggered.connect(self.refreshSerialPorts)
+        toolbar.addAction(button_action)
+
       
 
         #############
@@ -39,37 +49,34 @@ class ReaderWindow(QMainWindow):
         self.resize(300,400)
         #Initializing Layout Variables:
 
-        self.com_port = None
+        self.serial_port = None
         self.credits_trigger = None
         
-        with open('./config/card_reader/reader.json', 'r') as layout_file:
+        from paths import app_path
+        self.reader_config_path = app_path('config', 'card_reader', 'reader.json')
+        
+        with open(self.reader_config_path, 'r') as layout_file:
             layout_data = json.load(layout_file)
             # print(layout_data)
 
-            self.com_port = layout_data['com_port']
+            self.serial_port = layout_data['serial_port']
             self.credits_trigger = layout_data['credits_trigger']
         ##################################
        
 
 
-        #COM PORT SELECTOR
+        #SERIAL PORT SELECTOR
 
         comboHLayout = QVBoxLayout()
-        com_label = QLabel("Reader COM Port:")
-        self.reader_port = QSpinBox()
-        
-        # port_array = ['0',"1", "2",'3','4','5','6','7','8','9','10','11','12','13','14','15']
-        # port_array.remove(self.com_port)
-        # port_array.insert(0, self.com_port)
-
-        # self.reader_port.addItems(port_array)
-
-        self.reader_port.setMinimum(0)
-        self.reader_port.setValue(int(self.com_port))
-        self.reader_port.valueChanged.connect(self.updateCOM)
+        com_label = QLabel("Reader Serial Port:")
+        self.reader_port = QComboBox()
+        self.reader_port.setEditable(True)
+        self.reader_port.currentTextChanged.connect(self.updateSerialPort)
+        self.refreshSerialPorts()
 
         comboHLayout.addWidget(com_label)
         comboHLayout.addWidget(self.reader_port)
+        comboHLayout.addWidget(QLabel("Tip: /dev/serial/by-id entries are more stable than /dev/ttyUSB0."))
         comboHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
         ##############################
@@ -114,27 +121,52 @@ class ReaderWindow(QMainWindow):
         # print(num)
         self.credits_trigger = num
 
-    def updateCOM(self, text):
-        self.com_port = text
+    def updateSerialPort(self, text):
+        self.serial_port = text
+
+    def refreshSerialPorts(self):
+        current_port = self.serial_port or self.reader_port.currentText()
+        ports = self.getSerialPorts()
+        if current_port and current_port not in ports:
+            ports.insert(0, current_port)
+
+        self.reader_port.blockSignals(True)
+        self.reader_port.clear()
+        self.reader_port.addItems(ports)
+        if current_port:
+            self.reader_port.setCurrentText(current_port)
+        self.reader_port.blockSignals(False)
+        self.serial_port = self.reader_port.currentText()
+
+    def getSerialPorts(self):
+        ports = []
+        for port in list_ports.comports():
+            ports.append(port.device)
+
+        by_id_dir = Path("/dev/serial/by-id")
+        if by_id_dir.exists():
+            ports.extend(str(path) for path in sorted(by_id_dir.iterdir()))
+
+        return sorted(dict.fromkeys(ports))
     
     def saveReader(self):
         layout_data = None
-        com_changed = False
-        with open('./config/card_reader/reader.json', 'r') as layout_file:
+        port_changed = False
+        with open(self.reader_config_path, 'r') as layout_file:
             layout_data = json.load(layout_file)
 
-            if layout_data['com_port'] != self.com_port:
-                com_changed = True
+            if layout_data['serial_port'] != self.serial_port:
+                port_changed = True
 
             layout_data['credits_trigger'] = self.credits_trigger
-            layout_data['com_port'] = self.com_port
+            layout_data['serial_port'] = self.serial_port
             
 
             
            
-        with open('./config/card_reader/reader.json', 'w') as layout_file:
+        with open(self.reader_config_path, 'w') as layout_file:
             json.dump(layout_data, layout_file)
         
         self.reader.updateCreditAmount(self.credits_trigger)
-        if com_changed:
+        if port_changed:
             self.restartCreditThread()

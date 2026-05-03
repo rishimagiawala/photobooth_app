@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox
 from time import sleep
 import sys
 import cv2
+from paths import app_path, ensure_runtime_dirs
 from modules.camera import CameraReader
 from modules.credit_card import Reader
 from modules.printer import Printer
@@ -62,8 +63,9 @@ class Dashboard(QMainWindow):
         self.mobile_view = None
         self.save_photos = None
         self.angle = None
+        ensure_runtime_dirs()
         
-        with open('./config/printing/count.json', 'r') as layout_file:
+        with open(app_path('config', 'printing', 'count.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.printer_count = layout_data['count']
             self.startup_viewer = layout_data['startup_viewer']
@@ -183,8 +185,8 @@ class Dashboard(QMainWindow):
     def saveImageToFile(self):
         if self.queue == 0:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            filename = f'./photos/image_{timestamp}.jpg'
-            cv2.imwrite(filename,self.current_img)
+            filename = app_path('photos', f'image_{timestamp}.jpg')
+            cv2.imwrite(str(filename),self.current_img)
             print("Picture Taken")
         else:
             print("Please 'Flush Queue' to Take Picture")
@@ -251,9 +253,11 @@ class Dashboard(QMainWindow):
     def flushQueue(self):
 
         self.queue = 0
-        for filename in os.listdir('./photos'):
-            if os.path.isfile(os.path.join('./photos', filename)):
-                os.remove(os.path.join('./photos', filename))
+        photos_dir = app_path('photos')
+        for filename in os.listdir(photos_dir):
+            photo_path = photos_dir / filename
+            if photo_path.is_file():
+                photo_path.unlink()
         print("Cleaned Queue | Flushed Previous Photos")
         self.queue_label.setText("Queue Count: " + str(self.queue))
 
@@ -287,14 +291,14 @@ class Dashboard(QMainWindow):
     def savePrintData(self):
     
         layout_data = None
-        with open('./config/printing/count.json', 'r') as layout_file:
+        with open(app_path('config', 'printing', 'count.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             layout_data['count'] = self.printer_count
             layout_data['startup_viewer']= self.startup_viewer
             layout_data['mobile_view'] = self.mobile_view
-            layout_data['saved_photos'] = self.save_photos
+            layout_data['save_photos'] = self.save_photos
            
-        with open('./config/printing/count.json', 'w') as layout_file:
+        with open(app_path('config', 'printing', 'count.json'), 'w') as layout_file:
             json.dump(layout_data, layout_file)
     
     def toggleViewerOnLaunch(self):
@@ -305,12 +309,12 @@ class Dashboard(QMainWindow):
 
         if self.mobile_view == True:
             
-            os.rename('./assets/images/viewer/not_ready.png', './assets/images/viewer/ready_photobooth.png')
-            os.rename('./assets/images/viewer/ready_mobile.png', './assets/images/viewer/not_ready.png')
+            os.rename(app_path('assets', 'images', 'viewer', 'not_ready.png'), app_path('assets', 'images', 'viewer', 'ready_photobooth.png'))
+            os.rename(app_path('assets', 'images', 'viewer', 'ready_mobile.png'), app_path('assets', 'images', 'viewer', 'not_ready.png'))
             
         elif self.mobile_view == False:
-            os.rename('./assets/images/viewer/not_ready.png', './assets/images/viewer/ready_mobile.png')
-            os.rename('./assets/images/viewer/ready_photobooth.png', './assets/images/viewer/not_ready.png')
+            os.rename(app_path('assets', 'images', 'viewer', 'not_ready.png'), app_path('assets', 'images', 'viewer', 'ready_mobile.png'))
+            os.rename(app_path('assets', 'images', 'viewer', 'ready_photobooth.png'), app_path('assets', 'images', 'viewer', 'not_ready.png'))
 
         self.savePrintData()
 
@@ -321,7 +325,7 @@ class Dashboard(QMainWindow):
     def getSave(self):
         return self.save_photos
     def loadAngle(self):
-        with open('./config/printing/layout.json', 'r') as layout_file:
+        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
             layout_data = json.load(layout_file)
             self.angle = layout_data['angle']
 
