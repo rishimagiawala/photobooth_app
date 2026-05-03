@@ -140,11 +140,25 @@ class ReaderWindow(QMainWindow):
         for port in list_ports.comports():
             ports.append(port.device)
 
+        for pattern in ("/dev/ttyUSB*", "/dev/ttyACM*", "/dev/ttyS*"):
+            ports.extend(str(path) for path in sorted(Path("/dev").glob(pattern.replace("/dev/", ""))))
+
         by_id_dir = Path("/dev/serial/by-id")
         if by_id_dir.exists():
             ports.extend(str(path) for path in sorted(by_id_dir.iterdir()))
 
-        return sorted(dict.fromkeys(ports))
+        return sorted(dict.fromkeys(ports), key=self.serialPortSortKey)
+
+    def serialPortSortKey(self, port):
+        if port.startswith("/dev/serial/by-id/"):
+            return (0, port)
+        if port.startswith("/dev/ttyUSB"):
+            return (1, port)
+        if port.startswith("/dev/ttyACM"):
+            return (2, port)
+        if port.startswith("/dev/ttyS"):
+            return (3, port)
+        return (4, port)
     
     def saveReader(self):
         port_changed = False
