@@ -7,6 +7,9 @@ from time import sleep
 import serial, sys, time
 import cv2
 import numpy as np
+
+CAMERA_INDEX = 0
+
 class CameraReader(QThread):
     def __init__(self):
         super().__init__()
@@ -14,7 +17,7 @@ class CameraReader(QThread):
         print("Camera Module Started")
         try:
             
-            self.cap = cv2.VideoCapture(0)
+            self.cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_V4L2)
             
             self.cap.set(cv2.CAP_PROP_FPS, 60)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) 
