@@ -55,9 +55,11 @@ class Viewer(QMainWindow):
         self.centralWidget = self.image_label
         self.setCentralWidget(self.centralWidget)
         self.countdown_label = QLabel(self.image_label)
+        self.countdown_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
         self.countdown_label.setScaledContents(True)
-        self.countdown_label.resize(100,100)
-        self.countdown_label.move(int(width/2)-50, height-120) 
+        self.countdown_label.setStyleSheet("background: transparent;")
+        self.updateCountdownPosition()
+        self.countdown_label.raise_()
 
         self.photoThread = Photographer(self.toggleShowingCam, self.saveImageToFile, self.getQueueCount, self.popFromQueue, self.getTakenImage, self.getPrintCount)
         self.photoThread.start()
@@ -96,6 +98,7 @@ class Viewer(QMainWindow):
    
     def updateImage(self, image):
         self.image_label.setPixmap(QPixmap(image) if image else QPixmap())
+        self.countdown_label.raise_()
 
 
     def updateViewerCamImage(self, image):
@@ -128,8 +131,23 @@ class Viewer(QMainWindow):
         return True
     def updateCountImage(self, image):
         self.countdown_label.setPixmap(QPixmap(image) if image else QPixmap())
+        self.updateCountdownPosition()
+        self.countdown_label.raise_()
     def getTakenImage(self):
         return self.takenImage
+
+    def updateCountdownPosition(self):
+        width = self.image_label.width() or self.frameGeometry().width()
+        height = self.image_label.height() or self.frameGeometry().height()
+        size = max(160, int(min(width, height) * 0.18))
+        bottom_margin = max(40, int(height * 0.06))
+        self.countdown_label.resize(size, size)
+        self.countdown_label.move(int((width - size) / 2), height - size - bottom_margin)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "countdown_label"):
+            self.updateCountdownPosition()
         
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
