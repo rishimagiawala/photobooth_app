@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QSpinBox,
     QLineEdit,
-    QPushButton
+    QPushButton,
+    QListWidget
     
 )
 import json
@@ -66,13 +67,17 @@ class ReaderWindow(QMainWindow):
 
         comboHLayout = QVBoxLayout()
         com_label = QLabel("Reader Serial Port:")
-        self.reader_port = QComboBox()
-        self.reader_port.setEditable(True)
-        self.reader_port.currentTextChanged.connect(self.updateSerialPort)
+        self.reader_port = QLineEdit()
+        self.reader_port.setText(self.serial_port)
+        self.reader_port.textChanged.connect(self.updateSerialPort)
+        self.reader_port_list = QListWidget()
+        self.reader_port_list.setMaximumHeight(140)
+        self.reader_port_list.itemClicked.connect(self.selectSerialPort)
         self.refreshSerialPorts()
 
         comboHLayout.addWidget(com_label)
         comboHLayout.addWidget(self.reader_port)
+        comboHLayout.addWidget(self.reader_port_list)
         comboHLayout.addWidget(QLabel("Tip: /dev/serial/by-id entries are more stable than /dev/ttyUSB0."))
         comboHLayout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
@@ -121,19 +126,23 @@ class ReaderWindow(QMainWindow):
     def updateSerialPort(self, text):
         self.serial_port = text
 
+    def selectSerialPort(self, item):
+        self.reader_port.setText(item.text())
+
     def refreshSerialPorts(self):
-        current_port = self.serial_port or self.reader_port.currentText()
+        current_port = self.serial_port or self.reader_port.text()
         ports = self.getSerialPorts()
         if current_port and current_port not in ports:
             ports.insert(0, current_port)
 
-        self.reader_port.blockSignals(True)
-        self.reader_port.clear()
-        self.reader_port.addItems(ports)
+        self.reader_port_list.clear()
+        self.reader_port_list.addItems(ports)
         if current_port:
-            self.reader_port.setCurrentText(current_port)
-        self.reader_port.blockSignals(False)
-        self.serial_port = self.reader_port.currentText()
+            matching_items = self.reader_port_list.findItems(current_port, Qt.MatchExactly)
+            if matching_items:
+                self.reader_port_list.setCurrentItem(matching_items[0])
+            self.reader_port.setText(current_port)
+        self.serial_port = self.reader_port.text()
 
     def getSerialPorts(self):
         ports = []
