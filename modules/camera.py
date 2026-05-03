@@ -1,4 +1,5 @@
 from contextlib import suppress
+from pathlib import Path
 from typing import Optional
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget
 from PySide6.QtCore import QObject, Qt, QThread, Signal
@@ -8,7 +9,7 @@ import serial, sys, time
 import cv2
 import numpy as np
 
-CAMERA_INDICES = (0, 1, 2, 3, 4)
+PREFERRED_CAMERA = "/dev/video1"
 
 class CameraReader(QThread):
     def __init__(self):
@@ -42,9 +43,9 @@ class CameraReader(QThread):
                 sleep(0.1)
                 
     def openCamera(self):
-        for index in CAMERA_INDICES:
-            print(f"Trying camera index {index}")
-            cap = cv2.VideoCapture(index, cv2.CAP_V4L2)
+        for device in self.cameraDevices():
+            print(f"Trying camera device {device}")
+            cap = cv2.VideoCapture(device, cv2.CAP_V4L2)
             if not cap.isOpened():
                 cap.release()
                 continue
@@ -56,14 +57,28 @@ class CameraReader(QThread):
             if ret:
                 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                 height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-                print(f"Camera index {index} opened at {width}x{height}")
+                print(f"Camera device {device} opened at {width}x{height}")
                 return cap
 
-            print(f"Camera index {index} opened but did not return frames")
+            print(f"Camera device {device} opened but did not return frames")
             cap.release()
 
         print("Camera Startup Failed: no working V4L2 camera found")
         return None
+
+    def cameraDevices(self):
+        devices = sorted(Path("/dev").glob("video*"), key=self.videoDeviceSortKey)
+        device_paths = [str(device) for device in devices]
+
+        if PREFERRED_CAMERA in device_paths:
+            device_paths.remove(PREFERRED_CAMERA)
+            device_paths.insert(0, PREFERRED_CAMERA)
+
+        return device_paths
+
+    def videoDeviceSortKey(self, device):
+        suffix = device.name.replace("video", "")
+        return int(suffix) if suffix.isdigit() else 999
 
     
 
