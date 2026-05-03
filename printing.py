@@ -11,6 +11,7 @@ from paths import app_path, ensure_runtime_dirs, resolve_app_path
 
 right_off = 6
 STRIP_HEIGHT = 1200
+DEFAULT_PRINTER = "Dai_Nippon_Printing_DS-RX1"
 
 
 def printImages(image_arr, test=False):
@@ -128,7 +129,7 @@ def _paste_fit(canvas, image, box):
 
 def _submit_to_cups(strip_path):
     command = ["lp"]
-    printer_name = os.environ.get("PHOTOBOOTH_PRINTER")
+    printer_name = os.environ.get("PHOTOBOOTH_PRINTER", DEFAULT_PRINTER)
     if printer_name:
         command.extend(["-d", printer_name])
 

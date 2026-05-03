@@ -24,7 +24,7 @@ Add the booth user to the device groups, then log out and back in:
 sudo usermod -aG video,dialout "$USER"
 ```
 
-Configure the DNP RX1 in CUPS after installing the Gutenprint driver. The app renders every strip to `printed_strips/` and submits it with `lp`. By default it uses the default CUPS printer. To select a specific queue or pass printer options:
+Configure the DNP RX1 in CUPS after installing the Gutenprint driver. The app renders every strip to `printed_strips/` and submits it with `lp`. By default it prints to `Dai_Nippon_Printing_DS-RX1`. To override the queue or pass printer options:
 
 ```bash
 export PHOTOBOOTH_PRINTER="DNP_RX1"
