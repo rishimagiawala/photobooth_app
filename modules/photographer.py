@@ -9,6 +9,7 @@ import serial, sys, time
 import cv2
 import numpy as np
 import os
+from config_store import load_layout_config
 from paths import app_path
 class Photographer(QThread):
     def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage, getPrintCount):
@@ -37,9 +38,8 @@ class Photographer(QThread):
             if current_queue_count > 0:
                 self.change_image_signal.emit(str(app_path("assets", "images", "viewer", "msg_start.png")))
                 num_of_photos = 4
-                with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
-                    layout_data = json.load(layout_file)
-                    num_of_photos = layout_data['num_of_photos']
+                layout_data = load_layout_config()
+                num_of_photos = layout_data['num_of_photos']
                 print("Session Begun to Take " + str(num_of_photos) + " Photos")
                 sleep(2)
                 

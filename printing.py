@@ -6,6 +6,7 @@ from datetime import datetime
 
 from PIL import Image, ImageColor, ImageOps
 
+from config_store import load_layout_config
 from paths import app_path, ensure_runtime_dirs, resolve_app_path
 
 
@@ -23,8 +24,7 @@ def printImages(image_arr, test=False):
 
 def render_strip(image_arr, test=False):
     ensure_runtime_dirs()
-    with open(app_path("config", "printing", "layout.json"), "r") as layout_file:
-        layout_data = json.load(layout_file)
+    layout_data = load_layout_config()
 
     background_color = layout_data["background_color"]
     transparent_tuple = ImageColor.getcolor(background_color, "RGB") + (0,)

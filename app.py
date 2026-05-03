@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox
 from time import sleep
 import sys
 import cv2
+from config_store import COUNT_CONFIG_PATH, load_count_config, load_layout_config, save_json_config
 from paths import app_path, ensure_runtime_dirs
 from modules.camera import CameraReader
 from modules.credit_card import Reader
@@ -65,12 +66,11 @@ class Dashboard(QMainWindow):
         self.angle = None
         ensure_runtime_dirs()
         
-        with open(app_path('config', 'printing', 'count.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            self.printer_count = layout_data['count']
-            self.startup_viewer = layout_data['startup_viewer']
-            self.mobile_view = layout_data['mobile_view']
-            self.save_photos = layout_data['save_photos']
+        layout_data = load_count_config()
+        self.printer_count = layout_data['count']
+        self.startup_viewer = layout_data['startup_viewer']
+        self.mobile_view = layout_data['mobile_view']
+        self.save_photos = layout_data['save_photos']
 
 
         self.setWindowTitle("PhotoBooth Dashboard")
@@ -294,16 +294,12 @@ class Dashboard(QMainWindow):
 
     def savePrintData(self):
     
-        layout_data = None
-        with open(app_path('config', 'printing', 'count.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            layout_data['count'] = self.printer_count
-            layout_data['startup_viewer']= self.startup_viewer
-            layout_data['mobile_view'] = self.mobile_view
-            layout_data['save_photos'] = self.save_photos
-           
-        with open(app_path('config', 'printing', 'count.json'), 'w') as layout_file:
-            json.dump(layout_data, layout_file)
+        layout_data = load_count_config()
+        layout_data['count'] = self.printer_count
+        layout_data['startup_viewer']= self.startup_viewer
+        layout_data['mobile_view'] = self.mobile_view
+        layout_data['save_photos'] = self.save_photos
+        save_json_config(COUNT_CONFIG_PATH, layout_data)
     
     def toggleViewerOnLaunch(self):
         self.startup_viewer = self.viewer_launch_toggle.isChecked()
@@ -329,9 +325,8 @@ class Dashboard(QMainWindow):
     def getSave(self):
         return self.save_photos
     def loadAngle(self):
-        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            self.angle = layout_data['angle']
+        layout_data = load_layout_config()
+        self.angle = layout_data['angle']
 
     def getAngle(self):
         return self.angle

@@ -8,6 +8,7 @@ import serial, sys, time
 import os
 from printing import printImages
 import json
+from config_store import load_layout_config
 from paths import app_path, ensure_runtime_dirs
 
 class Printer(QThread):
@@ -19,9 +20,8 @@ class Printer(QThread):
         print("Printer Module Started")
         self.num_of_photos = None
         ensure_runtime_dirs()
-        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            self.num_of_photos = layout_data['num_of_photos']
+        layout_data = load_layout_config()
+        self.num_of_photos = layout_data['num_of_photos']
         
         self.current_print_count = 0
        

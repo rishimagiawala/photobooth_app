@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
 )
 import json
 
+from config_store import READER_CONFIG_PATH, load_reader_config, save_json_config
+
 
 class ReaderWindow(QMainWindow):
     def __init__(self, reader, restartCreditThread):
@@ -52,15 +54,10 @@ class ReaderWindow(QMainWindow):
         self.serial_port = None
         self.credits_trigger = None
         
-        from paths import app_path
-        self.reader_config_path = app_path('config', 'card_reader', 'reader.json')
-        
-        with open(self.reader_config_path, 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            # print(layout_data)
-
-            self.serial_port = layout_data['serial_port']
-            self.credits_trigger = layout_data['credits_trigger']
+        self.reader_config_path = READER_CONFIG_PATH
+        layout_data = load_reader_config()
+        self.serial_port = layout_data['serial_port']
+        self.credits_trigger = layout_data['credits_trigger']
         ##################################
        
 
@@ -150,22 +147,15 @@ class ReaderWindow(QMainWindow):
         return sorted(dict.fromkeys(ports))
     
     def saveReader(self):
-        layout_data = None
         port_changed = False
-        with open(self.reader_config_path, 'r') as layout_file:
-            layout_data = json.load(layout_file)
+        layout_data = load_reader_config()
 
-            if layout_data['serial_port'] != self.serial_port:
-                port_changed = True
+        if layout_data['serial_port'] != self.serial_port:
+            port_changed = True
 
-            layout_data['credits_trigger'] = self.credits_trigger
-            layout_data['serial_port'] = self.serial_port
-            
-
-            
-           
-        with open(self.reader_config_path, 'w') as layout_file:
-            json.dump(layout_data, layout_file)
+        layout_data['credits_trigger'] = self.credits_trigger
+        layout_data['serial_port'] = self.serial_port
+        save_json_config(self.reader_config_path, layout_data)
         
         self.reader.updateCreditAmount(self.credits_trigger)
         if port_changed:

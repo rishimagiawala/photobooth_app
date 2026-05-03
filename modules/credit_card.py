@@ -4,6 +4,7 @@ from PySide6.QtWidgets import *
 from PySide6.QtCore import *
 from time import sleep
 import serial, sys, time
+from config_store import load_reader_config
 from paths import app_path
 
 class Reader(QThread):
@@ -16,11 +17,10 @@ class Reader(QThread):
         self.credit_amount = None
         self.port = None
 
-        with open(app_path('config', 'card_reader', 'reader.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            self.credit_amount = layout_data['credits_trigger']
-            self.port = layout_data['serial_port']
-            print(self.port)
+        layout_data = load_reader_config()
+        self.credit_amount = layout_data['credits_trigger']
+        self.port = layout_data['serial_port']
+        print(self.port)
         self.baudrate = 9600
         self.ser = None
         

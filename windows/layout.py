@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     
 )
 import json
+from config_store import LAYOUT_CONFIG_PATH, load_layout_config, save_json_config
 from printing import printImages
 from paths import app_path, display_path, resolve_app_path
 
@@ -199,18 +200,16 @@ class LayoutWindow(QMainWindow):
         self.include_background = None
         self.background_color = None
         self.angle = None
-        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            # print(layout_data)
-            self.logo2_path = layout_data['logo2_path']
-            self.logo_path = layout_data['logo_path']
-            self.num_of_photos = layout_data['num_of_photos']
-            self.logo_position = layout_data['logo_position']
-            self.logo_square = layout_data['logo_square']
-            self.background_path = layout_data['background_path']
-            self.include_background = layout_data['include_background']
-            self.background_color = layout_data['background_color']
-            self.angle = layout_data['angle']
+        layout_data = load_layout_config()
+        self.logo2_path = layout_data['logo2_path']
+        self.logo_path = layout_data['logo_path']
+        self.num_of_photos = layout_data['num_of_photos']
+        self.logo_position = layout_data['logo_position']
+        self.logo_square = layout_data['logo_square']
+        self.background_path = layout_data['background_path']
+        self.include_background = layout_data['include_background']
+        self.background_color = layout_data['background_color']
+        self.angle = layout_data['angle']
         ##################################
         self.logo_arr = os.listdir(app_path('assets', 'images', 'logos'))
 
@@ -461,33 +460,25 @@ class LayoutWindow(QMainWindow):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
     def saveLayout(self):
-        layout_data = None
-        with open(app_path('config', 'printing', 'layout.json'), 'r') as layout_file:
-            layout_data = json.load(layout_file)
-            layout_data['logo_path'] = self.logo_path
-            layout_data['logo2_path'] = self.logo2_path
-            layout_data['num_of_photos'] = self.num_of_photos
-            layout_data['logo_square'] = self.checkBox.isChecked()
-            layout_data['angle'] = self.angle
-            # layout_data['background_path'] = self.background_path
-            # layout_data['include_background'] = self.bcheckBox.isChecked()
-            layout_data['background_color'] = self.background_color
-            image_height= int(1460/(self.num_of_photos))
+        layout_data = load_layout_config()
+        layout_data['logo_path'] = self.logo_path
+        layout_data['logo2_path'] = self.logo2_path
+        layout_data['num_of_photos'] = self.num_of_photos
+        layout_data['logo_square'] = self.checkBox.isChecked()
+        layout_data['angle'] = self.angle
+        # layout_data['background_path'] = self.background_path
+        # layout_data['include_background'] = self.bcheckBox.isChecked()
+        layout_data['background_color'] = self.background_color
+        image_height= int(1460/(self.num_of_photos))
 
-            layout_data['image_height'] = image_height
-            
-           
-            for i in range(len(self.order)):
-                if self.order[i] == 'LOGO':
-                    layout_data['logo_position'] = i
+        layout_data['image_height'] = image_height
+        
+       
+        for i in range(len(self.order)):
+            if self.order[i] == 'LOGO':
+                layout_data['logo_position'] = i
 
-            
-
-
-            
-           
-        with open(app_path('config', 'printing', 'layout.json'), 'w') as layout_file:
-            json.dump(layout_data, layout_file)
+        save_json_config(LAYOUT_CONFIG_PATH, layout_data)
         
         self.printer.updatePhotoCount(layout_data['num_of_photos'])
     def printTest(self):
