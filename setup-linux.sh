@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Install Python 3.11, create a virtual environment, and install Linux dependencies.
+# Prefer running: bash install-linux.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if grep -q $'\r' "${BASH_SOURCE[0]}" 2>/dev/null; then
+  sed -i 's/\r$//' "${BASH_SOURCE[0]}"
+  exec bash "${BASH_SOURCE[0]}" "$@"
+fi
+
 VENV_DIR="$ROOT/.venv"
 REQ_FILE="$ROOT/requirements-linux.txt"
 PY_MINOR="3.11"
