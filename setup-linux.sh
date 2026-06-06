@@ -244,6 +244,13 @@ print(f"Python {sys.version.split()[0]} with all required packages is ready")
 PY
 }
 
+configure_device_groups() {
+  local fix_script="$ROOT/fix-device-permissions.sh"
+  if [[ -f "$fix_script" ]]; then
+    bash "$fix_script"
+  fi
+}
+
 main() {
   [[ "$(uname -s)" == "Linux" ]] || die "this script is for Linux only"
   [[ -f "$REQ_FILE" ]] || die "missing $REQ_FILE"
@@ -252,6 +259,7 @@ main() {
   ensure_venv
   install_requirements
   verify_install
+  configure_device_groups
 
   echo
   echo "Setup complete."
@@ -262,10 +270,9 @@ main() {
   echo "Run the app:"
   echo "  python app.py"
   echo
-  echo "Optional booth hardware setup (camera, serial, printing):"
+  echo "Optional booth hardware setup (printing):"
   echo "  sudo apt install cups cups-client printer-driver-gutenprint v4l-utils"
-  echo "  sudo usermod -aG video,dialout \"\$USER\""
-  echo "Then log out and back in. See README.md for printer and card reader config."
+  echo "See README.md for printer and card reader config."
 }
 
 main "$@"
