@@ -1,83 +1,91 @@
-import json
-from PySide6.QtGui import *
-from PySide6.QtWidgets import *
-from PySide6.QtCore import *
-from time import sleep
-import serial, sys, time
+from contextlib import suppress
+from time import monotonic, sleep
+
+import serial
+from PySide6.QtCore import QThread, Signal
+
 from config_store import load_reader_config
-from paths import app_path
+
+RECONNECT_DELAY = 2.0
+
 
 class Reader(QThread):
+    begin_session = Signal()
+
     def __init__(self):
         super().__init__()
-        
-
-
-        # Initialize instance variables in the __init__ method
-        self.credit_amount = None
-        self.port = None
-
         layout_data = load_reader_config()
-        self.credit_amount = layout_data['credits_trigger']
-        self.port = layout_data['serial_port']
+        self.credit_amount = layout_data["credits_trigger"]
+        self.port = layout_data["serial_port"]
         print(self.port)
         self.baudrate = 9600
-        self.ser = None
-        
-        try:
-            self.ser = serial.Serial(self.port, self.baudrate, timeout=0.001)
-            print("Credit Card Reader Module Started")
-        except serial.SerialException as error:
-            print(f"Credit Card Reader unavailable at {self.port}: {error}")
         self.credit = 0
-        
-       
-    begin_session = Signal()
-    
+        self.ser = None
+        self._running = True
+        self._open_serial()
 
+    def _open_serial(self):
+        try:
+            self.ser = serial.Serial(self.port, self.baudrate, timeout=0.05)
+            print("Credit Card Reader Module Started")
+        except (serial.SerialException, OSError) as error:
+            self.ser = None
+            print(f"Credit Card Reader unavailable at {self.port}: {error}")
 
     def run(self):
-        """Long-running task."""
-        
-
-        while True:
+        while self._running:
             if self.ser is None:
-                sleep(1)
+                self._sleep(RECONNECT_DELAY)
+                if self._running:
+                    self._open_serial()
                 continue
 
             try:
                 data = self.ser.read(1)
                 data += self.ser.read(self.ser.inWaiting())
-            except serial.SerialException:
-                print("Credit Card Reader Failed, Please Confirm Serial Port Settings and Restart Program")
-                sleep(1)
+            except (serial.SerialException, OSError) as error:
+                print(f"Credit Card Reader read failed ({error}); attempting reconnect")
+                self.closeSerial()
+                self._sleep(RECONNECT_DELAY)
                 continue
-            integer_value = int.from_bytes(data) 
-            # print(data)
-            if len(data) > 0:
-                self.credit +=1
-                print(str(self.credit) + ' Tokens' + ' | Number ' + str(integer_value) + ' | Data ' + str(data))
-            if self.credit == self.credit_amount:
 
+            if not data:
+                # No token this cycle; yield a little CPU.
+                self._sleep(0.01)
+                continue
+
+            self.credit += 1
+            integer_value = int.from_bytes(data, "big")
+            print(f"{self.credit} Tokens | Number {integer_value} | Data {data}")
+
+            if self.credit >= self.credit_amount:
                 self.credit = 0
-                
                 self.begin_session.emit()
 
-        self.quit()
-        self.ser.close()
-        self.finished.emit()
+        self.closeSerial()
+
+    def stop(self):
+        self._running = False
+        self.closeSerial()
+        if not self.wait(3000):
+            print("Reader thread did not stop in time; forcing termination")
+            self.terminate()
+            self.wait(1000)
 
     def closeSerial(self):
-        try:
-            self.ser.close()
-        except:
-            pass
+        if self.ser is not None:
+            with suppress(Exception):
+                self.ser.close()
+            self.ser = None
 
-    def removeCredits(self):
-        if self.credit_count >= 3:
-            self.credit_count -= 3
     def updateCreditAmount(self, credit_amount):
         self.credit_amount = credit_amount
         print("Credit Trigger Updated To: " + str(self.credit_amount))
 
-    
+    def _sleep(self, seconds):
+        deadline = monotonic() + seconds
+        while self._running:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                break
+            sleep(min(0.05, remaining))

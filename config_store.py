@@ -1,4 +1,5 @@
 import json
+import os
 from json import JSONDecodeError
 
 from paths import app_path
@@ -55,8 +56,14 @@ def load_reader_config():
 
 def save_json_config(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as config_file:
-        json.dump(data, config_file)
+    # Write to a temp file then atomically replace, so a crash or power loss
+    # mid-write can never leave a half-written (corrupt) config behind.
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp_path, "w") as config_file:
+        json.dump(data, config_file, indent=2)
+        config_file.flush()
+        os.fsync(config_file.fileno())
+    os.replace(tmp_path, path)
 
 
 def load_json_config(path, defaults):

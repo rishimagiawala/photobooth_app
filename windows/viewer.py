@@ -1,10 +1,13 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor, QTransform
+from contextlib import suppress
 from time import sleep
+import os
 import sys
 from modules.camera import CameraReader
 import cv2
+import numpy as np
 from modules.credit_card import Reader
 from modules.photographer import Photographer
 from datetime import datetime
@@ -123,31 +126,47 @@ class Viewer(QMainWindow):
 
 
     def updateViewerCamImage(self, image):
+        if image is None:
+            return
         self.camImage = image
         if self.showingCam is True:
-            image = imutils.rotate(image, self.getAngle())
-            
-            qt_img = self.convert_cv_qt(image)
-            
-            self.takenImage = qt_img
-            self.image_label.setPixmap(qt_img)
+            try:
+                # Downscale before rotate/convert so the GUI thread does far
+                # less work per frame (the preview is shown small anyway).
+                preview = image
+                if preview.shape[1] > 800:
+                    preview = imutils.resize(preview, width=800)
+                preview = imutils.rotate(preview, self.getAngle())
+                qt_img = self.convert_cv_qt(preview)
+                self.takenImage = qt_img
+                self.image_label.setPixmap(qt_img)
+            except Exception as error:
+                print(f"Preview update failed: {error}")
     def toggleShowingCam(self, toggle):
         self.showingCam =  toggle
     def saveImageToFile(self):
-        if self.camImage is None or self.camImage.size == 0:
+        frame = self.camImage
+        if frame is None or frame.size == 0:
             print("Picture skipped: camera frame is not ready")
             return False
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = app_path('photos', f'image_{timestamp}.png')
-        if not cv2.imwrite(str(filename),self.camImage):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        final_path = app_path('photos', f'image_{timestamp}.png')
+        # Write to a temp name first so the printer thread never sees a
+        # half-written file, then atomically move it into place.
+        temp_path = app_path('photos', f'.image_{timestamp}.png.tmp')
+        if not cv2.imwrite(str(temp_path), frame):
             print("Picture skipped: failed to save camera frame")
+            with suppress(OSError):
+                os.remove(temp_path)
             return False
+        os.replace(temp_path, final_path)
 
         if self.getSave() is True:
             permname = app_path('saved_photos', f'image_{timestamp}.png')
-            cv2.imwrite(str(permname),self.camImage)
-        
+            with suppress(Exception):
+                cv2.imwrite(str(permname), frame)
+
         print("Picture Taken")
         return True
     def updateCountImage(self, image):
@@ -173,11 +192,14 @@ class Viewer(QMainWindow):
     def convert_cv_qt(self, cv_img):
         """Convert from an opencv image to QPixmap"""
         rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        # Ensure a contiguous buffer so QImage reads valid memory.
+        rgb_image = np.ascontiguousarray(rgb_image)
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
         p = convert_to_Qt_format.scaled(600, 600, Qt.KeepAspectRatio)
-        return QPixmap.fromImage(p)
+        # Copy so the pixmap doesn't reference the soon-to-be-freed numpy buffer.
+        return QPixmap.fromImage(p.copy())
     
     #Possible error in redundancy
     
@@ -186,8 +208,7 @@ class Viewer(QMainWindow):
         # print("Viewer was Closed")
         if not self._closing:
             self._closing = True
-            self.photoThread.terminate()
-            self.photoThread.wait(1000)
+            self.photoThread.stop()
             self.closeViewer()
         
         

@@ -5,7 +5,7 @@ import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QTextCursor, QColor, QPalette
-from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox
+from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox, QMessageBox
 from time import sleep
 import sys
 import cv2
@@ -16,6 +16,7 @@ from modules.credit_card import Reader
 from modules.printer import Printer
 from windows.credit import ReaderWindow
 from windows.layout import LayoutWindow
+from windows.logo import LogoWindow
 from windows.photobooth import PhotoboothWindow
 from windows.viewer import Viewer
 import webbrowser
@@ -56,6 +57,7 @@ class Dashboard(QMainWindow):
         super(Dashboard, self).__init__()
         self.w = None
         self.layoutWindow = None
+        self.logoWindow = None
         self.current_img = None
         self.queue = 0
         self.readerWindow = None
@@ -88,15 +90,20 @@ class Dashboard(QMainWindow):
         button_action.triggered.connect(self.startViewer)
         toolbar.addAction(button_action)
 
+        change_logo_action = QAction("Change Logo", self)
+        change_logo_action.setStatusTip("Change the logo shown on printed strips")
+        change_logo_action.triggered.connect(self.openLogoEditor)
+        toolbar.addAction(change_logo_action)
+
 
         button_action = QAction("Flush Queue", self)
         button_action.setStatusTip("Flush Queue")
-        button_action.triggered.connect(self.flushQueue)
+        button_action.triggered.connect(self.confirmFlushQueue)
         toolbar.addAction(button_action)
 
         button_action = QAction("Reset Print Count", self)
         button_action.setStatusTip("Reset Print Count")
-        button_action.triggered.connect(self.resetPrintCount)
+        button_action.triggered.connect(self.confirmResetPrintCount)
         toolbar.addAction(button_action)
 
 
@@ -171,7 +178,13 @@ class Dashboard(QMainWindow):
         #Starting Camera
         self.cameraThread = CameraReader()
         self.cameraThread.start()
-        self.cameraThread.image_signal.connect(self.updateCurrentImage)
+        # Pull the newest frame at a fixed display rate instead of reacting to
+        # every captured frame. This stops the Qt event loop from being flooded
+        # at high FPS, which was the cause of the viewer freezing.
+        self.cameraTimer = QTimer(self)
+        self.cameraTimer.setInterval(33)  # ~30 FPS
+        self.cameraTimer.timeout.connect(self.pollCamera)
+        self.cameraTimer.start()
        #Starting Printer    
         self.printerThread = Printer()
         self.printerThread.start()
@@ -189,13 +202,20 @@ class Dashboard(QMainWindow):
         self.startViewer(from_startup=True)
 
     def saveImageToFile(self):
-        if self.queue == 0:
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            filename = app_path('photos', f'image_{timestamp}.jpg')
-            cv2.imwrite(str(filename),self.current_img)
-            print("Picture Taken")
-        else:
+        if self.queue != 0:
             print("Please 'Flush Queue' to Take Picture")
+            return
+
+        if self.current_img is None:
+            print("Picture skipped: camera frame is not ready")
+            return
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        filename = app_path('photos', f'image_{timestamp}.jpg')
+        if not cv2.imwrite(str(filename), self.current_img):
+            print("Picture skipped: failed to save camera frame")
+            return
+        print("Picture Taken")
 
     
     def startViewer(self, from_startup=False):
@@ -216,6 +236,10 @@ class Dashboard(QMainWindow):
                 self.layoutWindow.close()
                 self.layoutWindow = None
 
+            if self.logoWindow is not None:
+                self.logoWindow.close()
+                self.logoWindow = None
+
             if self.readerWindow is not None:
                 self.readerWindow.close()
                 self.readerWindow = None
@@ -233,10 +257,13 @@ class Dashboard(QMainWindow):
         self.activateWindow()
         print("Viewer Closed")
     
-    def updateCurrentImage(self,image):
-        self.current_img = image
+    def pollCamera(self):
+        frame = self.cameraThread.read_latest()
+        if frame is None:
+            return
+        self.current_img = frame
         if self.w is not None:
-            self.w.updateViewerCamImage(image=self.current_img)
+            self.w.updateViewerCamImage(image=frame)
 
     #This function has to do with updating the output console
     def onUpdateText(self, text):
@@ -277,6 +304,36 @@ class Dashboard(QMainWindow):
     def openLayoutEditor(self):
         self.layoutWindow = LayoutWindow(self.printerThread)
         self.layoutWindow.show()
+
+    def openLogoEditor(self):
+        self.logoWindow = LogoWindow()
+        self.logoWindow.show()
+        self.logoWindow.raise_()
+        self.logoWindow.activateWindow()
+
+    def confirmFlushQueue(self):
+        if self._confirm(
+            "Flush the queue?",
+            "This clears the current session and deletes the photos waiting to print.",
+        ):
+            self.flushQueue()
+
+    def confirmResetPrintCount(self):
+        if self._confirm(
+            "Reset the print count back to 0?",
+            "Do this after you load a fresh roll of paper.",
+        ):
+            self.resetPrintCount()
+
+    def _confirm(self, question, detail):
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("Please confirm")
+        box.setText(question)
+        box.setInformativeText(detail)
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        box.setDefaultButton(QMessageBox.No)
+        return box.exec() == QMessageBox.Yes
     
     def resetPrintCount(self):
         self.printer_count = 0
@@ -288,9 +345,7 @@ class Dashboard(QMainWindow):
 
     def restartCardThread(self):
         print("Thread Restarting....")
-        self.cardThread.closeSerial()
-        self.cardThread.terminate()
-        self.cardThread = None
+        self.cardThread.stop()
         self.cardThread = Reader()
         self.cardThread.start()
         self.cardThread.begin_session.connect(self.addToQueue)
@@ -316,14 +371,23 @@ class Dashboard(QMainWindow):
     def toggleMobile(self):
         self.mobile_view = self.mobile_view_toggle.isChecked()
 
-        if self.mobile_view == True:
-            
-            os.rename(app_path('assets', 'images', 'viewer', 'not_ready.png'), app_path('assets', 'images', 'viewer', 'ready_photobooth.png'))
-            os.rename(app_path('assets', 'images', 'viewer', 'ready_mobile.png'), app_path('assets', 'images', 'viewer', 'not_ready.png'))
-            
-        elif self.mobile_view == False:
-            os.rename(app_path('assets', 'images', 'viewer', 'not_ready.png'), app_path('assets', 'images', 'viewer', 'ready_mobile.png'))
-            os.rename(app_path('assets', 'images', 'viewer', 'ready_photobooth.png'), app_path('assets', 'images', 'viewer', 'not_ready.png'))
+        viewer_dir = app_path('assets', 'images', 'viewer')
+        not_ready = viewer_dir / 'not_ready.png'
+        photobooth = viewer_dir / 'ready_photobooth.png'
+        mobile = viewer_dir / 'ready_mobile.png'
+
+        try:
+            if self.mobile_view:
+                # Swap the photobooth "ready" image out and the mobile one in.
+                if not_ready.exists() and not photobooth.exists() and mobile.exists():
+                    not_ready.rename(photobooth)
+                    mobile.rename(not_ready)
+            else:
+                if not_ready.exists() and not mobile.exists() and photobooth.exists():
+                    not_ready.rename(mobile)
+                    photobooth.rename(not_ready)
+        except OSError as error:
+            print(f"Could not toggle mobile view assets: {error}")
 
         self.savePrintData()
 
@@ -342,9 +406,11 @@ class Dashboard(QMainWindow):
 
     #Possible error in redundancy   
     def closeEvent(self, event: QCloseEvent) -> None:
-        self.cameraThread.terminate()
-        self.printerThread.terminate()
-        self.cardThread.terminate()
+        if hasattr(self, "cameraTimer"):
+            self.cameraTimer.stop()
+        self.cameraThread.stop()
+        self.printerThread.stop()
+        self.cardThread.stop()
         self.flushQueue()
         if self.w is not None:
             self.w.close()
@@ -353,6 +419,10 @@ class Dashboard(QMainWindow):
         if self.layoutWindow is not None:
             self.layoutWindow.close()
             self.layoutWindow = None
+
+        if self.logoWindow is not None:
+            self.logoWindow.close()
+            self.logoWindow = None
 
         if self.readerWindow is not None:
             self.readerWindow.close()

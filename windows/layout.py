@@ -214,19 +214,16 @@ class LayoutWindow(QMainWindow):
         self.logo_arr = os.listdir(app_path('assets', 'images', 'logos'))
 
         self.logo_arr = [display_path(app_path('assets', 'images', 'logos', element)) for element in self.logo_arr]
-        self.logo_arr.remove(self.logo_path)
-        self.logo_arr.insert(0, self.logo_path)
+        self._move_to_front(self.logo_arr, self.logo_path)
 
         self.logo2_arr = os.listdir(app_path('assets', 'images', 'logos'))
         self.logo2_arr = [display_path(app_path('assets', 'images', 'logos', element)) for element in self.logo2_arr]
-        self.logo2_arr.remove(self.logo2_path)
-        self.logo2_arr.insert(0, self.logo2_path)
+        self._move_to_front(self.logo2_arr, self.logo2_path)
 
 
         self.background_arr = os.listdir(app_path('assets', 'images', 'background'))
         self.background_arr = [display_path(app_path('assets', 'images', 'background', element)) for element in self.background_arr]
-        self.background_arr.remove(self.background_path)
-        self.background_arr.insert(0, self.background_path)
+        self._move_to_front(self.background_arr, self.background_path)
 
         self.order = []
         for i in range(self.num_of_photos + 1):
@@ -394,6 +391,14 @@ class LayoutWindow(QMainWindow):
         container.setLayout(mainHContainer)
         
         self.setCentralWidget(container)
+
+    @staticmethod
+    def _move_to_front(items, value):
+        # Put the currently-selected value first without crashing if the file
+        # it points to no longer exists in the folder.
+        if value in items:
+            items.remove(value)
+        items.insert(0, value)
 
     def changeLayout(self):
         

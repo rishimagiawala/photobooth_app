@@ -1,7 +1,7 @@
-import json
 import os
 import shlex
 import subprocess
+from contextlib import suppress
 from datetime import datetime
 
 from PIL import Image, ImageColor, ImageOps
@@ -13,6 +13,8 @@ from paths import app_path, ensure_runtime_dirs, resolve_app_path
 right_off = 6
 STRIP_HEIGHT = 1200
 DEFAULT_PRINTER = "Dai_Nippon_Printing_DS-RX1"
+# Don't let a stuck CUPS/printer block the print thread forever.
+LP_TIMEOUT_SECONDS = 120
 
 
 def printImages(image_arr, test=False):
@@ -33,7 +35,8 @@ def render_strip(image_arr, test=False):
     image_paths = [_photo_path(element, test) for element in image_arr]
     image_paths.insert(logo_pos, resolve_app_path(layout_data["logo_path"]))
 
-    logo2 = Image.open(resolve_app_path(layout_data["logo2_path"])).convert("RGBA")
+    with Image.open(resolve_app_path(layout_data["logo2_path"])) as logo2_raw:
+        logo2 = logo2_raw.convert("RGBA")
     logo2 = logo2.rotate(90, expand=True)
     logo2 = makeTransparent(logo2, transparent_tuple)
 
@@ -47,8 +50,12 @@ def render_strip(image_arr, test=False):
 
     marginx = 10
     image_offset = 0
+    # Track the customer photos so they're only deleted after the strip is
+    # saved successfully (a render crash must not lose the originals).
+    photo_sources = []
     for i, image_path in enumerate(image_paths):
-        bmp = Image.open(image_path).convert("RGBA")
+        with Image.open(image_path) as opened:
+            bmp = opened.convert("RGBA")
         if bmp.size[0] > bmp.size[1] or (i == logo_pos and logo_rotate is True):
             bmp = bmp.rotate(90, expand=True)
         if logo_pos == i:
@@ -63,8 +70,7 @@ def render_strip(image_arr, test=False):
             _paste_fit(canvas, bmp, boxes[0])
             _paste_fit(canvas, bmp, boxes[1])
             image_offset += image_height
-            if test is False:
-                os.remove(image_path)
+            photo_sources.append(image_path)
         else:
             if logo_square is False:
                 boxes = [
@@ -84,6 +90,12 @@ def render_strip(image_arr, test=False):
     output_path = app_path("printed_strips", f"photo_strip_{datetime.now().strftime('%Y%m%d%H%M%S')}.png")
     canvas.convert("RGB").save(output_path)
     print(f"Rendered print strip: {output_path}")
+
+    if test is False:
+        for source in photo_sources:
+            with suppress(OSError):
+                os.remove(source)
+
     return output_path
 
 
@@ -139,9 +151,11 @@ def _submit_to_cups(strip_path):
 
     command.append(str(strip_path))
     try:
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, timeout=LP_TIMEOUT_SECONDS)
         print("Print job submitted to CUPS")
     except FileNotFoundError:
         print("Could not submit print job: 'lp' command is not installed")
+    except subprocess.TimeoutExpired:
+        print(f"Could not submit print job: lp timed out after {LP_TIMEOUT_SECONDS}s")
     except subprocess.CalledProcessError as error:
         print(f"Could not submit print job: lp exited with status {error.returncode}")
