@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
-from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor, QTransform
 from time import sleep
 import sys
@@ -36,7 +36,7 @@ class Viewer(QMainWindow):
         self._closing = False
 
         self.setWindowTitle("Photobooth Window")
-        self.showFullScreen()
+        self.setFocusPolicy(Qt.StrongFocus)
        
         width = self.frameGeometry().width()
         height = self.frameGeometry().height()
@@ -66,6 +66,27 @@ class Viewer(QMainWindow):
         self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.showFullScreen()
+        self.schedule_focus()
+
+    def schedule_focus(self):
+        for delay_ms in (0, 100, 500, 1500):
+            QTimer.singleShot(delay_ms, self.grab_viewer_focus)
+
+    def grab_viewer_focus(self):
+        if self._closing:
+            return
+
+        self.showFullScreen()
+        self.raise_()
+        self.activateWindow()
+        self.setFocus(Qt.ActiveWindowFocusReason)
+
+        app = QApplication.instance()
+        if app is not None:
+            app.setActiveWindow(self)
     
     def keyPressEvent(self, event) -> None:
         if (event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter)  and self.getPrintCount() > 699:

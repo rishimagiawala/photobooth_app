@@ -3,7 +3,7 @@ import json
 import os
 
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QHBoxLayout
-from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QMetaObject, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QPixmap, QImage, QTextCursor, QColor, QPalette
 from PySide6.QtWidgets import QTextEdit, QSizePolicy, QCheckBox
 from time import sleep
@@ -183,9 +183,11 @@ class Dashboard(QMainWindow):
         self.cardThread.begin_session.connect(self.addToQueue)
 
         if self.startup_viewer is True:
-            self.startViewer()
+            QTimer.singleShot(250, self.launchStartupViewer)
 
-    
+    def launchStartupViewer(self):
+        self.startViewer(from_startup=True)
+
     def saveImageToFile(self):
         if self.queue == 0:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -196,15 +198,19 @@ class Dashboard(QMainWindow):
             print("Please 'Flush Queue' to Take Picture")
 
     
-    def startViewer(self):
+    def startViewer(self, from_startup=False):
         if self.w is None:
             self.loadAngle()
             self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount, self.getSave, self.getAngle)
-            #Weird behavior
-            self.showNormal()
-            self.showMinimized()
+            if from_startup:
+                self.hide()
+            else:
+                #Weird behavior
+                self.showNormal()
+                self.showMinimized()
             
             self.w.show()
+            self.w.schedule_focus()
             
             if self.layoutWindow is not None:
                 self.layoutWindow.close()
@@ -222,6 +228,9 @@ class Dashboard(QMainWindow):
         self.w.close()
         self.w = None
         self.flushQueue()
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
         print("Viewer Closed")
     
     def updateCurrentImage(self,image):

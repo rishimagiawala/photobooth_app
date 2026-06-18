@@ -49,6 +49,7 @@ Path=$ROOT
 Terminal=false
 StartupNotify=false
 X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
 Hidden=false
 EOF
 
