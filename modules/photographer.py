@@ -12,8 +12,10 @@ COUNTDOWN_IMAGES = (
     "countdown-2.png",
     "countdown-1.png",
 )
-# Live-preview pause between shots so people can reset their pose (no freeze).
-GAP_BETWEEN_PHOTOS = 2.0
+# How long to freeze on the shot that was just taken so people can see it.
+PHOTO_REVIEW_SECONDS = 1.0
+# Live-preview pause after the review so people can reset their pose.
+LIVE_GAP_SECONDS = 1.0
 # How long the "your photos are printing" screen stays up at the end.
 FINISHED_SCREEN_SECONDS = 3.0
 
@@ -88,9 +90,16 @@ class Photographer(QThread):
             self.takePicture()
 
         self.change_count_signal.emit("")
-        # Keep the live preview up during the gap instead of freezing a frame.
+
+        # Freeze on the shot that was just taken (turning the live preview off
+        # holds the last frame on screen) so people can see the photo.
+        self.toggleCamStream(False)
+        self._sleep(PHOTO_REVIEW_SECONDS)
+
+        # Then resume the live preview so they can reset their pose.
         if not is_last:
-            self._sleep(GAP_BETWEEN_PHOTOS)
+            self.toggleCamStream(True)
+            self._sleep(LIVE_GAP_SECONDS)
 
     def _finish_session(self):
         # Always run, even if the session errored out, so the queue is cleared
