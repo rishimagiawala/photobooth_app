@@ -12,6 +12,10 @@ COUNTDOWN_IMAGES = (
     "countdown-2.png",
     "countdown-1.png",
 )
+# Live-preview pause between shots so people can reset their pose (no freeze).
+GAP_BETWEEN_PHOTOS = 2.0
+# How long the "your photos are printing" screen stays up at the end.
+FINISHED_SCREEN_SECONDS = 3.0
 
 
 def _viewer_asset(name):
@@ -33,49 +37,42 @@ class Photographer(QThread):
     change_count_signal = Signal(str)
 
     def run(self):
-        self.change_image_signal.emit(_viewer_asset("not_ready.png"))
+        self._show_idle()
 
         while self._running:
             try:
-                self._run_once()
+                if self.getQueueCount() <= 0:
+                    self._sleep(0.1)
+                    continue
+                self._run_session()
             except Exception as error:
+                # A session must never get stuck looping on an error; the
+                # finally block in _run_session has already cleared the queue.
                 print(f"Photographer error: {error}")
-                # Reset to a known-safe idle state and keep the thread alive.
-                self.toggleCamStream(False)
-                self.change_count_signal.emit("")
                 self._sleep(1)
 
-    def _run_once(self):
-        if self.getQueueCount() <= 0:
-            self._sleep(0.1)
-            return
+    def _run_session(self):
+        try:
+            layout_data = load_layout_config()
+            num_of_photos = layout_data["num_of_photos"]
+            print(f"Session Begun to Take {num_of_photos} Photos")
 
-        self.change_image_signal.emit(_viewer_asset("msg_start.png"))
-        layout_data = load_layout_config()
-        num_of_photos = layout_data["num_of_photos"]
-        print(f"Session Begun to Take {num_of_photos} Photos")
-        self._sleep(2)
+            self.change_image_signal.emit(_viewer_asset("msg_start.png"))
+            self._sleep(2)
 
-        for _ in range(num_of_photos):
-            if not self._running:
-                break
-            self._capture_one_photo()
-
-        self.toggleCamStream(False)
-        self.change_count_signal.emit("")
-        self.change_image_signal.emit(_viewer_asset("msg_finished.png"))
-        self._sleep(2)
-        self.popFromQueue()
-
-        if self.getQueueCount() == 0:
+            # Camera stays live for the whole session so there's no freeze
+            # between shots, only the countdown overlay before each one.
+            self.toggleCamStream(True)
+            for index in range(num_of_photos):
+                if not self._running:
+                    break
+                self._capture_one_photo(is_last=index == num_of_photos - 1)
+        finally:
+            self.toggleCamStream(False)
             self.change_count_signal.emit("")
-            if self.getPrintCount() > 699:
-                self.change_image_signal.emit(_viewer_asset("no_paper.png"))
-            else:
-                self.change_image_signal.emit(_viewer_asset("not_ready.png"))
+            self._finish_session()
 
-    def _capture_one_photo(self):
-        self.toggleCamStream(True)
+    def _capture_one_photo(self, is_last):
         for name in COUNTDOWN_IMAGES:
             if not self._running:
                 return
@@ -91,8 +88,28 @@ class Photographer(QThread):
             self.takePicture()
 
         self.change_count_signal.emit("")
-        self.toggleCamStream(False)
-        self._sleep(2)
+        # Keep the live preview up during the gap instead of freezing a frame.
+        if not is_last:
+            self._sleep(GAP_BETWEEN_PHOTOS)
+
+    def _finish_session(self):
+        # Always run, even if the session errored out, so the queue is cleared
+        # and the booth returns to a sane state.
+        if self._running:
+            self.change_image_signal.emit(_viewer_asset("msg_finished.png"))
+            self._sleep(FINISHED_SCREEN_SECONDS)
+
+        self.popFromQueue()
+
+        if self._running and self.getQueueCount() == 0:
+            self._show_idle()
+
+    def _show_idle(self):
+        self.change_count_signal.emit("")
+        if self.getPrintCount() > 699:
+            self.change_image_signal.emit(_viewer_asset("no_paper.png"))
+        else:
+            self.change_image_signal.emit(_viewer_asset("not_ready.png"))
 
     def stop(self):
         self._running = False

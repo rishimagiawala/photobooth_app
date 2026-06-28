@@ -103,7 +103,9 @@ class Viewer(QMainWindow):
 
 
     def mouseDoubleClickEvent(self, e):
-        self.addToQueue()
+        # Guard against a double-tap stacking two sessions back-to-back.
+        if self.getQueueCount() == 0:
+            self.addToQueue()
     
     def mousePressEvent(self, event: QMouseEvent) -> None:
         
@@ -150,17 +152,27 @@ class Viewer(QMainWindow):
             print("Picture skipped: camera frame is not ready")
             return False
 
+        # Encode to PNG in memory so the temp file's extension doesn't matter
+        # (cv2.imwrite picks the format from the extension, which broke when
+        # writing to a ".tmp" file).
+        success, buffer = cv2.imencode('.png', frame)
+        if not success:
+            print("Picture skipped: failed to encode camera frame")
+            return False
+
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
         final_path = app_path('photos', f'image_{timestamp}.png')
         # Write to a temp name first so the printer thread never sees a
         # half-written file, then atomically move it into place.
         temp_path = app_path('photos', f'.image_{timestamp}.png.tmp')
-        if not cv2.imwrite(str(temp_path), frame):
-            print("Picture skipped: failed to save camera frame")
+        try:
+            buffer.tofile(str(temp_path))
+            os.replace(temp_path, final_path)
+        except OSError as error:
+            print(f"Picture skipped: failed to save camera frame ({error})")
             with suppress(OSError):
                 os.remove(temp_path)
             return False
-        os.replace(temp_path, final_path)
 
         if self.getSave() is True:
             permname = app_path('saved_photos', f'image_{timestamp}.png')
