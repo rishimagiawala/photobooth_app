@@ -161,9 +161,12 @@ def _paste_fit(canvas, image, box):
 
 def _submit_to_cups(strip_path):
     command = ["lp"]
-    printer_name = os.environ.get("PHOTOBOOTH_PRINTER", DEFAULT_PRINTER)
-    if printer_name:
-        command.extend(["-d", printer_name])
+
+    target_printer = _resolve_printer()
+    if target_printer:
+        command.extend(["-d", target_printer])
+    # If target_printer is None we omit -d entirely, so CUPS uses its own
+    # default destination.
 
     lp_options = os.environ.get("PHOTOBOOTH_LP_OPTIONS")
     if lp_options:
@@ -172,10 +175,59 @@ def _submit_to_cups(strip_path):
     command.append(str(strip_path))
     try:
         subprocess.run(command, check=True, timeout=LP_TIMEOUT_SECONDS)
-        print("Print job submitted to CUPS")
+        print(f"Print job submitted to CUPS ({target_printer or 'system default'})")
     except FileNotFoundError:
         print("Could not submit print job: 'lp' command is not installed")
     except subprocess.TimeoutExpired:
         print(f"Could not submit print job: lp timed out after {LP_TIMEOUT_SECONDS}s")
     except subprocess.CalledProcessError as error:
         print(f"Could not submit print job: lp exited with status {error.returncode}")
+
+
+def _resolve_printer():
+    """Pick the printer to use, falling back to the CUPS default if needed.
+
+    Preference order:
+      1. The configured printer (PHOTOBOOTH_PRINTER env var, else DEFAULT_PRINTER)
+         if CUPS actually knows about it.
+      2. The CUPS system default printer.
+      3. None -> let `lp` decide (it will use the default, or fail if none).
+    """
+    desired = os.environ.get("PHOTOBOOTH_PRINTER", DEFAULT_PRINTER)
+    printers = _available_printers()
+
+    # Couldn't query CUPS (e.g. lpstat missing) -> just try the configured name.
+    if not printers:
+        return desired
+
+    if desired in printers:
+        return desired
+
+    default = _default_printer()
+    if default and default in printers:
+        print(f"Printer '{desired}' not found; falling back to CUPS default '{default}'")
+        return default
+
+    print(f"Printer '{desired}' not found and no usable CUPS default; letting CUPS decide")
+    return None
+
+
+def _available_printers():
+    try:
+        result = subprocess.run(["lpstat", "-a"], capture_output=True, text=True, timeout=10)
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return set()
+    return {line.split()[0] for line in result.stdout.splitlines() if line.strip()}
+
+
+def _default_printer():
+    try:
+        result = subprocess.run(["lpstat", "-d"], capture_output=True, text=True, timeout=10)
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return None
+    text = result.stdout.strip()
+    # Output is "system default destination: NAME" or "no system default destination".
+    if ":" in text:
+        name = text.split(":", 1)[1].strip()
+        return name or None
+    return None

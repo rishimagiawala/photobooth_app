@@ -25,4 +25,12 @@ fi
   echo "$(date -Is) starting photobooth from $PHOTOBOOTH_DIR"
 } >> "$LOG_FILE"
 
+# Best-effort: point the print queue at whatever DS-RX1 is connected. Only acts
+# if the printer changed, and must never block the app from launching (e.g. if
+# the printer is off or a sudo password would be required).
+if [[ -f "$PHOTOBOOTH_DIR/fix-printer.sh" ]]; then
+  bash "$PHOTOBOOTH_DIR/fix-printer.sh" --noninteractive >> "$LOG_FILE" 2>&1 \
+    || echo "$(date -Is) printer auto-link skipped (using existing/default printer)" >> "$LOG_FILE"
+fi
+
 exec "$VENV_PYTHON" "$PHOTOBOOTH_DIR/app.py" >> "$LOG_FILE" 2>&1
