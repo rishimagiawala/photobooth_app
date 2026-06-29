@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,QToolBar, QSizePolicy
 from PySide6.QtCore import QObject, Qt, QThread, Signal, QPoint, QKeyCombination, QTimer
-from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor, QTransform
+from PySide6.QtGui import QAction, QCloseEvent, QKeyEvent, QKeySequence, QMouseEvent, QPixmap, QImage, QDesktopServices, QCursor, QShortcut, QTransform
 from contextlib import suppress
 from time import sleep
 import os
@@ -68,6 +68,17 @@ class Viewer(QMainWindow):
         self.photoThread.start()
         self.photoThread.change_image_signal.connect(self.updateImage)
         self.photoThread.change_count_signal.connect(self.updateCountImage)
+
+        # Application-wide exit shortcuts. On a fullscreen Linux kiosk,
+        # keyPressEvent can miss the key (focus lands on a child widget or the
+        # window manager grabs it), so bind these at application scope so they
+        # always fire while the viewer is open.
+        self._exit_shortcuts = []
+        for key_sequence in (QKeySequence(Qt.Key_Escape), QKeySequence("Ctrl+Q")):
+            shortcut = QShortcut(key_sequence, self)
+            shortcut.setContext(Qt.ApplicationShortcut)
+            shortcut.activated.connect(self.close)
+            self._exit_shortcuts.append(shortcut)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -191,7 +202,7 @@ class Viewer(QMainWindow):
     def updateCountdownPosition(self):
         width = self.image_label.width() or self.frameGeometry().width()
         height = self.image_label.height() or self.frameGeometry().height()
-        size = max(160, int(min(width, height) * 0.18))
+        size = max(120, int(min(width, height) * 0.13))
         bottom_margin = max(40, int(height * 0.06))
         self.countdown_label.resize(size, size)
         self.countdown_label.move(int((width - size) / 2), height - size - bottom_margin)

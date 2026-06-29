@@ -15,13 +15,33 @@ STRIP_HEIGHT = 1200
 DEFAULT_PRINTER = "Dai_Nippon_Printing_DS-RX1"
 # Don't let a stuck CUPS/printer block the print thread forever.
 LP_TIMEOUT_SECONDS = 120
+# Keep only the most recent rendered strips so storage doesn't fill up, while
+# still leaving a few around in case a strip needs to be reprinted.
+MAX_KEPT_STRIPS = 5
 
 
 def printImages(image_arr, test=False):
     print("Print Job Received")
     strip_path = render_strip(image_arr, test)
     _submit_to_cups(strip_path)
+    _prune_old_strips()
     return strip_path
+
+
+def _prune_old_strips(keep=MAX_KEPT_STRIPS):
+    """Keep only the most recent rendered strips; delete the older ones."""
+    strips_dir = app_path("printed_strips")
+    if not strips_dir.exists():
+        return
+
+    strips = sorted(
+        (path for path in strips_dir.glob("*.png") if path.is_file()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for old_strip in strips[keep:]:
+        with suppress(OSError):
+            old_strip.unlink()
 
 
 def render_strip(image_arr, test=False):
