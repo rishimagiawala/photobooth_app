@@ -43,32 +43,35 @@ class CameraReader(QThread):
     def run(self):
         consecutive_failures = 0
         while self._running:
-            if self.cap is None or not self.cap.isOpened():
-                self.cap = self._open_camera()
-                if self.cap is None:
-                    self._interruptible_sleep(REOPEN_DELAY)
-                    continue
-                consecutive_failures = 0
-
             try:
-                ret, frame = self.cap.read()
-            except cv2.error as error:
-                print(f"Camera read error: {error}")
-                ret, frame = False, None
-
-            if ret and frame is not None and frame.size > 0:
-                consecutive_failures = 0
-                with self._frame_lock:
-                    self._latest_frame = frame
-            else:
-                consecutive_failures += 1
-                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-                    print("Camera stopped returning frames; reopening device")
-                    self._release_capture()
+                if self.cap is None or not self.cap.isOpened():
+                    self.cap = self._open_camera()
+                    if self.cap is None:
+                        self._interruptible_sleep(REOPEN_DELAY)
+                        continue
                     consecutive_failures = 0
-                    self._interruptible_sleep(REOPEN_DELAY)
+
+                ret, frame = self.cap.read()
+
+                if ret and frame is not None and frame.size > 0:
+                    consecutive_failures = 0
+                    with self._frame_lock:
+                        self._latest_frame = frame
                 else:
-                    self._interruptible_sleep(0.05)
+                    consecutive_failures += 1
+                    if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                        print("Camera stopped returning frames; reopening device")
+                        self._release_capture()
+                        consecutive_failures = 0
+                        self._interruptible_sleep(REOPEN_DELAY)
+                    else:
+                        self._interruptible_sleep(0.05)
+            except Exception as error:
+                # Never let the capture thread die; drop the device and retry.
+                print(f"Camera loop error: {error}; recovering")
+                self._release_capture()
+                consecutive_failures = 0
+                self._interruptible_sleep(REOPEN_DELAY)
 
         self._release_capture()
 

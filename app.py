@@ -142,6 +142,9 @@ class Dashboard(QMainWindow):
         
 
         self.text_edit_console = QTextEdit(self)
+        self.text_edit_console.setReadOnly(True)
+        # Cap the on-screen log so it can't grow unbounded over a long run.
+        self.text_edit_console.document().setMaximumBlockCount(2000)
 
 
         

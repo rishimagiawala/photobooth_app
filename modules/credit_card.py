@@ -34,35 +34,44 @@ class Reader(QThread):
 
     def run(self):
         while self._running:
-            if self.ser is None:
-                self._sleep(RECONNECT_DELAY)
-                if self._running:
-                    self._open_serial()
-                continue
-
             try:
-                data = self.ser.read(1)
-                data += self.ser.read(self.ser.inWaiting())
-            except (serial.SerialException, OSError) as error:
-                print(f"Credit Card Reader read failed ({error}); attempting reconnect")
+                self._poll_once()
+            except Exception as error:
+                # Never let the reader thread die; reconnect and carry on.
+                print(f"Credit Card Reader error ({error}); attempting reconnect")
                 self.closeSerial()
                 self._sleep(RECONNECT_DELAY)
-                continue
-
-            if not data:
-                # No token this cycle; yield a little CPU.
-                self._sleep(0.01)
-                continue
-
-            self.credit += 1
-            integer_value = int.from_bytes(data, "big")
-            print(f"{self.credit} Tokens | Number {integer_value} | Data {data}")
-
-            if self.credit >= self.credit_amount:
-                self.credit = 0
-                self.begin_session.emit()
 
         self.closeSerial()
+
+    def _poll_once(self):
+        if self.ser is None:
+            self._sleep(RECONNECT_DELAY)
+            if self._running:
+                self._open_serial()
+            return
+
+        try:
+            data = self.ser.read(1)
+            data += self.ser.read(self.ser.inWaiting())
+        except (serial.SerialException, OSError) as error:
+            print(f"Credit Card Reader read failed ({error}); attempting reconnect")
+            self.closeSerial()
+            self._sleep(RECONNECT_DELAY)
+            return
+
+        if not data:
+            # No token this cycle; yield a little CPU.
+            self._sleep(0.01)
+            return
+
+        self.credit += 1
+        integer_value = int.from_bytes(data, "big")
+        print(f"{self.credit} Tokens | Number {integer_value} | Data {data}")
+
+        if self.credit >= self.credit_amount:
+            self.credit = 0
+            self.begin_session.emit()
 
     def stop(self):
         self._running = False
