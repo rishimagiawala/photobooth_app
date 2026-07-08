@@ -103,8 +103,8 @@ def render_strip(image_arr, test=False):
                     (image_offset + marginy + init, int(square_margin * 2.7) + right_off, image_offset + logo_height, int(STRIP_HEIGHT / 2 - (square_margin * 2.3))),
                     (image_offset + marginy + init, int(STRIP_HEIGHT / 2) + (square_margin + 70), image_offset + logo_height, int(STRIP_HEIGHT - (square_margin * 4 - 70))),
                 ]
-            _paste_fit(canvas, bmp, boxes[0])
-            _paste_fit(canvas, logo2, boxes[1])
+            _paste_contain(canvas, bmp, boxes[0])
+            _paste_contain(canvas, logo2, boxes[1])
             image_offset += logo_height
 
     output_path = app_path("printed_strips", f"photo_strip_{datetime.now().strftime('%Y%m%d%H%M%S')}.png")
@@ -152,11 +152,23 @@ def _photo_path(filename, test):
 
 
 def _paste_fit(canvas, image, box):
+    """Scale to fill the box, cropping overflow (cover). Used for photos."""
     left, top, right, bottom = box
     width = max(1, right - left)
     height = max(1, bottom - top)
     fitted = ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS)
     canvas.alpha_composite(fitted, (left, top))
+
+
+def _paste_contain(canvas, image, box):
+    """Scale to fit inside the box without cropping (contain). Used for logos."""
+    left, top, right, bottom = box
+    width = max(1, right - left)
+    height = max(1, bottom - top)
+    contained = ImageOps.contain(image, (width, height), method=Image.Resampling.LANCZOS)
+    paste_x = left + (width - contained.width) // 2
+    paste_y = top + (height - contained.height) // 2
+    canvas.alpha_composite(contained, (paste_x, paste_y))
 
 
 def _submit_to_cups(strip_path):
