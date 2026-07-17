@@ -25,18 +25,36 @@ def _viewer_asset(name):
 
 
 class Photographer(QThread):
-    def __init__(self, callbackCam, callbackTakePicture, getQueueCount, popFromQueue, getTakenImage, getPrintCount):
-        super().__init__()
-        self.getQueueCount = getQueueCount
-        self.popFromQueue = popFromQueue
-        self.toggleCamStream = callbackCam
-        self.takePicture = callbackTakePicture
-        self.getTakenImage = getTakenImage
-        self.getPrintCount = getPrintCount
-        self._running = True
+    """Runs photobooth sessions off the GUI thread.
+
+    Widget updates go through signals (queued to the main thread). Camera
+    streaming uses a direct thread-safe callback so wake/pause does not depend
+    on the GUI event loop. Capture also uses a direct callback and must not
+    touch widgets.
+    """
 
     change_image_signal = Signal(str)
     change_count_signal = Signal(str)
+    set_preview_signal = Signal(bool)
+    show_review_signal = Signal()
+
+    def __init__(
+        self,
+        callbackTakePicture,
+        getQueueCount,
+        popFromQueue,
+        getPrintCount,
+        setStreaming,
+        isCameraReady,
+    ):
+        super().__init__()
+        self.getQueueCount = getQueueCount
+        self.popFromQueue = popFromQueue
+        self.takePicture = callbackTakePicture
+        self.getPrintCount = getPrintCount
+        self.setStreaming = setStreaming
+        self.isCameraReady = isCameraReady
+        self._running = True
 
     def run(self):
         self._show_idle()
@@ -59,18 +77,21 @@ class Photographer(QThread):
             num_of_photos = layout_data["num_of_photos"]
             print(f"Session Begun to Take {num_of_photos} Photos")
 
+            # Wake the camera immediately (thread-safe; not via GUI queue) so it
+            # can reopen during the "get ready" screen.
+            self.setStreaming(True)
             self.change_image_signal.emit(_viewer_asset("msg_start.png"))
             self._sleep(2)
+            self._wait_for_camera(timeout=5.0)
 
-            # Camera stays live for the whole session so there's no freeze
-            # between shots, only the countdown overlay before each one.
-            self.toggleCamStream(True)
+            self.set_preview_signal.emit(True)
             for index in range(num_of_photos):
                 if not self._running:
                     break
                 self._capture_one_photo(is_last=index == num_of_photos - 1)
         finally:
-            self.toggleCamStream(False)
+            self.set_preview_signal.emit(False)
+            self.setStreaming(False)
             self.change_count_signal.emit("")
             self._finish_session()
 
@@ -84,21 +105,25 @@ class Photographer(QThread):
         if not self._running:
             return
 
-        if not self.takePicture():
+        captured = self.takePicture()
+        if not captured:
             print("Waiting for camera frame before retrying picture")
             self._sleep(1)
-            self.takePicture()
+            captured = self.takePicture()
 
         self.change_count_signal.emit("")
 
-        # Freeze on the shot that was just taken (turning the live preview off
-        # holds the last frame on screen) so people can see the photo.
-        self.toggleCamStream(False)
-        self._sleep(PHOTO_REVIEW_SECONDS)
+        # Stop live preview updates and explicitly paint the captured frame
+        # on the GUI thread (do not rely on "whatever was last on the label").
+        self.set_preview_signal.emit(False)
+        if captured:
+            self.show_review_signal.emit()
+            self._sleep(PHOTO_REVIEW_SECONDS)
+        else:
+            print("Picture failed after retry; skipping review frame")
 
-        # Then resume the live preview so they can reset their pose.
         if not is_last:
-            self.toggleCamStream(True)
+            self.set_preview_signal.emit(True)
             self._sleep(LIVE_GAP_SECONDS)
 
     def _finish_session(self):
@@ -114,11 +139,27 @@ class Photographer(QThread):
             self._show_idle()
 
     def _show_idle(self):
+        self.set_preview_signal.emit(False)
+        self.setStreaming(False)
         self.change_count_signal.emit("")
         if self.getPrintCount() > 699:
             self.change_image_signal.emit(_viewer_asset("no_paper.png"))
         else:
             self.change_image_signal.emit(_viewer_asset("not_ready.png"))
+
+    def _wait_for_camera(self, timeout):
+        """Wait until the GUI has received at least one live frame."""
+        deadline = monotonic() + timeout
+        while self._running and monotonic() < deadline:
+            try:
+                if self.isCameraReady():
+                    return True
+            except Exception as error:
+                print(f"Camera ready check failed: {error}")
+                return False
+            self._sleep(0.1)
+        print("Camera frame not ready after warmup; continuing anyway")
+        return False
 
     def stop(self):
         self._running = False

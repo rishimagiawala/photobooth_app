@@ -52,6 +52,9 @@ class Stream(QThread):
 
 
 class Dashboard(QMainWindow):
+    # Emitted when the queue changes from a worker thread so the label is
+    # always updated on the GUI thread.
+    queue_changed = Signal(int)
 
     def __init__(self):
         super(Dashboard, self).__init__()
@@ -67,6 +70,7 @@ class Dashboard(QMainWindow):
         self.save_photos = None
         self.angle = None
         ensure_runtime_dirs()
+        self.queue_changed.connect(self._on_queue_changed)
         
         layout_data = load_count_config()
         self.printer_count = layout_data['count']
@@ -209,6 +213,9 @@ class Dashboard(QMainWindow):
             print("Please 'Flush Queue' to Take Picture")
             return
 
+        # Dashboard test shot — make sure the device is awake.
+        self.setCameraStreaming(True)
+
         if self.current_img is None:
             print("Picture skipped: camera frame is not ready")
             return
@@ -224,7 +231,17 @@ class Dashboard(QMainWindow):
     def startViewer(self, from_startup=False):
         if self.w is None:
             self.loadAngle()
-            self.w = Viewer(self.addToQueue, self.popFromQueue, self.getQueueCount, self.closeViewer, self.getPrintCount, self.resetPrintCount, self.getSave, self.getAngle)
+            self.w = Viewer(
+                self.addToQueue,
+                self.popFromQueue,
+                self.getQueueCount,
+                self.closeViewer,
+                self.getPrintCount,
+                self.resetPrintCount,
+                self.getSave,
+                self.getAngle,
+                self.setCameraStreaming,
+            )
             if from_startup:
                 self.hide()
             else:
@@ -255,12 +272,21 @@ class Dashboard(QMainWindow):
         self.w.close()
         self.w = None
         self.flushQueue()
+        # Viewer sessions pause the camera while idle; resume for dashboard use.
+        self.setCameraStreaming(True)
         self.showNormal()
         self.raise_()
         self.activateWindow()
         print("Viewer Closed")
+
+    def setCameraStreaming(self, enabled):
+        self.cameraThread.set_streaming(enabled)
     
     def pollCamera(self):
+        # Avoid copying 1080p frames onto the GUI thread while the camera is
+        # paused between sessions.
+        if not self.cameraThread.is_streaming():
+            return
         frame = self.cameraThread.read_latest()
         if frame is None:
             return
@@ -277,24 +303,31 @@ class Dashboard(QMainWindow):
         self.text_edit_console.ensureCursorVisible()
 
     def addToQueue(self):
-        #Test this
+        # Called from the GUI thread (card signal / viewer tap).
         if self.queue == 0:
             self.flushQueue()
 
         self.queue += 1
         print("Queue Count: " + str(self.queue))
         self.queue_label.setText("Queue Count: " + str(self.queue))
+
     def popFromQueue(self):
+        # May be called from the photographer worker thread — never touch
+        # widgets here; emit so the label updates on the GUI thread.
         if self.queue > 0:
             self.queue -= 1
         else:
             self.queue = 0
         print("Queue Count: " + str(self.queue))
-        self.queue_label.setText("Queue Count: " + str(self.queue))
+        self.queue_changed.emit(self.queue)
+
+    def _on_queue_changed(self, count):
+        self.queue_label.setText("Queue Count: " + str(count))
+
     def getQueueCount(self):
         return self.queue
-    def flushQueue(self):
 
+    def flushQueue(self):
         self.queue = 0
         photos_dir = app_path('photos')
         for filename in os.listdir(photos_dir):

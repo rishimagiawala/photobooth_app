@@ -17,11 +17,14 @@ MAX_CONSECUTIVE_FAILURES = 30
 
 
 class CameraReader(QThread):
-    """Continuously grabs frames from a V4L2 camera.
+    """Grabs frames from a V4L2 camera while streaming is enabled.
 
     The capture loop only stores the most recent frame (protected by a lock).
     Consumers pull frames with ``read_latest()`` at their own pace, which keeps
     the GUI event loop from being flooded with per-frame signals.
+
+    Streaming can be paused while the booth is idle so the USB camera is not
+    held open for hours between sessions.
     """
 
     # Kept for backwards compatibility; the GUI polls ``read_latest`` instead.
@@ -32,7 +35,11 @@ class CameraReader(QThread):
         print("Camera Module Started")
         self._running = True
         self._frame_lock = Lock()
+        self._stream_lock = Lock()
         self._latest_frame = None
+        # Start streaming so the dashboard "Take Picture" path works before a
+        # viewer session; the photographer pauses the device while idle.
+        self._streaming = True
         self.cap = None
 
         with suppress(ModuleNotFoundError):
@@ -44,6 +51,16 @@ class CameraReader(QThread):
         consecutive_failures = 0
         while self._running:
             try:
+                if not self.is_streaming():
+                    if self.cap is not None:
+                        print("Camera streaming paused; releasing device")
+                        self._release_capture()
+                        with self._frame_lock:
+                            self._latest_frame = None
+                        consecutive_failures = 0
+                    self._interruptible_sleep(0.1)
+                    continue
+
                 if self.cap is None or not self.cap.isOpened():
                     self.cap = self._open_camera()
                     if self.cap is None:
@@ -74,6 +91,19 @@ class CameraReader(QThread):
                 self._interruptible_sleep(REOPEN_DELAY)
 
         self._release_capture()
+
+    def set_streaming(self, enabled):
+        """Enable or pause hardware capture. Safe to call from any thread."""
+        enabled = bool(enabled)
+        with self._stream_lock:
+            if self._streaming == enabled:
+                return
+            self._streaming = enabled
+        print(f"Camera streaming {'enabled' if enabled else 'paused'}")
+
+    def is_streaming(self):
+        with self._stream_lock:
+            return self._streaming
 
     def read_latest(self):
         """Return a copy of the most recent frame, or ``None`` if unavailable."""
