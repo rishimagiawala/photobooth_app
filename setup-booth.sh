@@ -8,7 +8,8 @@
 #   1) install-linux.sh     — Python venv + Linux dependencies
 #   2) install-autostart.sh — launch app on desktop login
 #   3) enable-autologin.sh  — boot straight to the desktop user
-#   4) start-photobooth.sh  — optional; only with --start
+#   4) disable-sleep.sh     — no sleep / suspend / screen blank
+#   5) start-photobooth.sh  — optional; only with --start
 #
 # Flags:
 #   --start     launch the app when setup finishes (blocks this terminal)
@@ -68,6 +69,7 @@ cd "$ROOT"
 [[ -f "$ROOT/install-linux.sh" ]] || die "missing install-linux.sh"
 [[ -f "$ROOT/install-autostart.sh" ]] || die "missing install-autostart.sh"
 [[ -f "$ROOT/enable-autologin.sh" ]] || die "missing enable-autologin.sh"
+[[ -f "$ROOT/disable-sleep.sh" ]] || die "missing disable-sleep.sh"
 [[ -f "$ROOT/start-photobooth.sh" ]] || die "missing start-photobooth.sh"
 
 fix_crlf() {
@@ -83,6 +85,7 @@ for script in \
   setup-linux.sh \
   install-autostart.sh \
   enable-autologin.sh \
+  disable-sleep.sh \
   start-photobooth.sh \
   fix-printer.sh
 do
@@ -91,16 +94,20 @@ do
 done
 
 echo
-info "Step 1/3 — install dependencies and virtualenv"
+info "Step 1/4 — install dependencies and virtualenv"
 bash "$ROOT/install-linux.sh"
 
 echo
-info "Step 2/3 — install desktop autostart"
+info "Step 2/4 — install desktop autostart"
 bash "$ROOT/install-autostart.sh"
 
 echo
-info "Step 3/3 — enable automatic login"
+info "Step 3/4 — enable automatic login"
 bash "$ROOT/enable-autologin.sh"
+
+echo
+info "Step 4/4 — disable sleep / suspend / screen blanking"
+bash "$ROOT/disable-sleep.sh"
 
 echo
 echo "=========================================="

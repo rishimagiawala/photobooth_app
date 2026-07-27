@@ -10,8 +10,21 @@ fi
 PHOTOBOOTH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PYTHON="$PHOTOBOOTH_DIR/.venv/bin/python"
 LOG_FILE="$PHOTOBOOTH_DIR/photobooth.log"
+# Cap log growth on kiosk machines that stay up for weeks.
+MAX_LOG_BYTES=$((5 * 1024 * 1024))
 
 cd "$PHOTOBOOTH_DIR"
+
+rotate_log_if_needed() {
+  [[ -f "$LOG_FILE" ]] || return 0
+  local size
+  size="$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)"
+  if [[ "$size" -gt "$MAX_LOG_BYTES" ]]; then
+    mv -f "$LOG_FILE" "${LOG_FILE}.old"
+  fi
+}
+
+rotate_log_if_needed
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
   {
