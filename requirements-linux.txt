@@ -1,5 +1,6 @@
 PySide6
-opencv-python
+# Headless avoids OpenCV shipping its own Qt plugins, which break PySide6's xcb plugin.
+opencv-python-headless
 pyserial
 Pillow
 imutils

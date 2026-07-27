@@ -82,32 +82,38 @@ venv_is_empty() {
 }
 
 install_runtime_libs_apt() {
-  local optional=(
+  # Required for PySide6's xcb platform plugin on Mint/Ubuntu.
+  local required=(
+    build-essential
+    libgl1
+    libglib2.0-0
+    libfontconfig1
+    libdbus-1-3
+    libxkbcommon0
+    libxkbcommon-x11-0
+    libegl1
     libxcb-cursor0
     libxcb-icccm4
     libxcb-image0
     libxcb-keysyms1
     libxcb-render-util0
     libxcb-xinerama0
+    libxcb-shape0
+    libxcb-randr0
+    libxcb-xfixes0
   )
 
-  sudo apt-get install -y \
-    build-essential \
-    libgl1 \
-    libglib2.0-0 \
-    libfontconfig1 \
-    libdbus-1-3 \
-    libxkbcommon0 \
-    libxkbcommon-x11-0 \
-    libegl1
-
-  for pkg in "${optional[@]}"; do
+  local pkg
+  local to_install=()
+  for pkg in "${required[@]}"; do
     if apt-cache show "$pkg" >/dev/null 2>&1; then
-      sudo apt-get install -y "$pkg"
+      to_install+=("$pkg")
     else
-      echo "note: optional package not available on this distro: $pkg"
+      echo "note: package not available on this distro: $pkg"
     fi
   done
+
+  sudo apt-get install -y "${to_install[@]}"
 }
 
 is_ubuntu_family() {

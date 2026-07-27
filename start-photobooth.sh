@@ -46,4 +46,8 @@ if [[ -f "$PHOTOBOOTH_DIR/fix-printer.sh" ]]; then
     || echo "$(date -Is) printer auto-link skipped (using existing/default printer)" >> "$LOG_FILE"
 fi
 
+# Prevent OpenCV (or other packages) from hijacking Qt's plugin search path.
+unset QT_PLUGIN_PATH || true
+unset QT_QPA_PLATFORM_PLUGIN_PATH || true
+
 exec "$VENV_PYTHON" "$PHOTOBOOTH_DIR/app.py" >> "$LOG_FILE" 2>&1
