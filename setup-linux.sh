@@ -238,6 +238,22 @@ install_pacman_packages() {
   SYSTEM_PYTHON="python3"
 }
 
+ensure_runtime_libs() {
+  # Always install GUI runtime libs, even when Python is already present.
+  # Previously we skipped apt packages on re-runs, which left libxcb-cursor0 missing.
+  if command -v apt-get >/dev/null 2>&1; then
+    info "ensuring Qt/XCB runtime libraries are installed"
+    sudo apt-get update
+    install_runtime_libs_apt
+  elif command -v dnf >/dev/null 2>&1; then
+    info "ensuring GUI runtime libraries are installed"
+    sudo dnf install -y mesa-libGL libXkbcommon-x11 libxcb fontconfig dbus-libs || true
+  elif command -v pacman >/dev/null 2>&1; then
+    info "ensuring GUI runtime libraries are installed"
+    sudo pacman -Sy --needed mesa libxkbcommon-x11 fontconfig dbus || true
+  fi
+}
+
 ensure_system_python() {
   if SYSTEM_PYTHON="$(find_usable_python)"; then
     info "found $($SYSTEM_PYTHON --version)"
@@ -378,6 +394,7 @@ main() {
   [[ "$(uname -s)" == "Linux" ]] || die "this script is for Linux only"
   [[ -f "$REQ_FILE" ]] || die "missing $REQ_FILE"
 
+  ensure_runtime_libs
   ensure_system_python
   ensure_venv
   install_requirements
