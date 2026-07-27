@@ -11,8 +11,11 @@ fi
 
 VENV_DIR="$ROOT/.venv"
 REQ_FILE="$ROOT/requirements-linux.txt"
-PY_MINOR="3.11"
-SYSTEM_PYTHON="python${PY_MINOR}"
+# Prefer 3.11, but accept nearby CPython versions that ship on Mint/Ubuntu.
+PREFERRED_PYTHONS=(python3.11 python3.12 python3.10 python3)
+MIN_PY_MAJOR=3
+MIN_PY_MINOR=10
+SYSTEM_PYTHON=""
 PYTHON="$VENV_DIR/bin/python"
 
 die() {
@@ -22,6 +25,29 @@ die() {
 
 info() {
   echo "==> $*"
+}
+
+python_version_ok() {
+  local bin="$1"
+  "$bin" -c "import sys; raise SystemExit(0 if sys.version_info[:2] >= (${MIN_PY_MAJOR}, ${MIN_PY_MINOR}) else 1)" >/dev/null 2>&1
+}
+
+python_has_venv() {
+  local bin="$1"
+  "$bin" -c 'import venv' >/dev/null 2>&1
+}
+
+find_usable_python() {
+  local candidate
+  for candidate in "${PREFERRED_PYTHONS[@]}"; do
+    if command -v "$candidate" >/dev/null 2>&1 \
+        && python_version_ok "$candidate" \
+        && python_has_venv "$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
 }
 
 venv_has_pip() {
@@ -61,64 +87,107 @@ install_runtime_libs_apt() {
   done
 }
 
+is_ubuntu_family() {
+  [[ -f /etc/os-release ]] || return 1
+  # shellcheck source=/dev/null
+  source /etc/os-release
+  case "${ID:-}" in
+    ubuntu|linuxmint|pop|elementary|zorin) return 0 ;;
+  esac
+  case " ${ID_LIKE:-} " in
+    *" ubuntu "*|*" debian "*) return 0 ;;
+  esac
+  return 1
+}
+
 ensure_python311_apt_repo() {
-  if apt-cache show "python${PY_MINOR}" >/dev/null 2>&1; then
+  # Prefer python3.11 when the distro can provide it; otherwise we fall back.
+  if apt-cache show "python3.11" >/dev/null 2>&1; then
     return 0
   fi
 
-  [[ -f /etc/os-release ]] || die "Python ${PY_MINOR} is not available from apt on this system"
-
+  [[ -f /etc/os-release ]] || return 1
   # shellcheck source=/dev/null
   source /etc/os-release
 
+  if is_ubuntu_family; then
+    info "Python 3.11 is not in the default repos; adding deadsnakes PPA"
+    sudo apt-get install -y software-properties-common ca-certificates gnupg
+    # Mint/Pop need the Ubuntu base codename (jammy/noble), not the Mint one.
+    if [[ -n "${UBUNTU_CODENAME:-}" ]]; then
+      info "using Ubuntu base codename: $UBUNTU_CODENAME"
+      if ! sudo add-apt-repository -y "deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu ${UBUNTU_CODENAME} main"; then
+        sudo add-apt-repository -y ppa:deadsnakes/ppa || true
+      fi
+    else
+      sudo add-apt-repository -y ppa:deadsnakes/ppa || true
+    fi
+    sudo apt-get update || true
+    return 0
+  fi
+
   case "${ID:-}" in
-    ubuntu)
-      info "Python ${PY_MINOR} is not in the default Ubuntu repos; adding deadsnakes PPA"
-      sudo apt-get install -y software-properties-common ca-certificates gnupg
-      sudo add-apt-repository -y ppa:deadsnakes/ppa
-      sudo apt-get update
-      ;;
     debian)
       case "${VERSION_CODENAME:-}" in
-        bookworm)
-          return 0
-          ;;
-        bullseye)
-          die "Debian 11 does not ship Python ${PY_MINOR} by default. Upgrade to Debian 12 (bookworm) or install Python ${PY_MINOR} manually."
-          ;;
-        *)
-          die "Could not find Python ${PY_MINOR} for Debian ${VERSION_CODENAME:-unknown}. Install it manually and re-run."
-          ;;
+        bookworm|trixie|sid) return 0 ;;
+        *) return 1 ;;
       esac
       ;;
     *)
-      die "Python ${PY_MINOR} is not available from apt on ${ID:-this distro}. Install it manually and re-run."
+      return 1
       ;;
   esac
+}
 
-  apt-cache show "python${PY_MINOR}" >/dev/null 2>&1 \
-    || die "Python ${PY_MINOR} package still not found after repo setup"
+install_apt_python_packages() {
+  local minor="$1"
+  sudo apt-get install -y \
+    "python${minor}" \
+    "python${minor}-venv" \
+    "python${minor}-dev"
 }
 
 install_apt_packages() {
-  info "installing Python ${PY_MINOR} and system packages (sudo required)..."
+  info "installing Python and system packages (sudo required)..."
   sudo apt-get update
-  ensure_python311_apt_repo
+  ensure_python311_apt_repo || true
 
-  sudo apt-get install -y \
-    "python${PY_MINOR}" \
-    "python${PY_MINOR}-venv" \
-    "python${PY_MINOR}-dev"
+  # Try preferred versions from apt, then use whatever usable interpreter exists.
+  local minor
+  for minor in 3.11 3.12 3.10; do
+    if apt-cache show "python${minor}" >/dev/null 2>&1; then
+      info "installing python${minor} from apt"
+      if install_apt_python_packages "$minor"; then
+        SYSTEM_PYTHON="python${minor}"
+        break
+      fi
+    fi
+  done
+
+  if [[ -z "$SYSTEM_PYTHON" ]]; then
+    info "specific Python package not found; installing python3 + venv"
+    sudo apt-get install -y python3 python3-venv python3-dev
+  fi
 
   install_runtime_libs_apt
 }
 
 install_dnf_packages() {
-  info "installing Python ${PY_MINOR} and system packages (sudo required)..."
+  info "installing Python and system packages (sudo required)..."
+  local minor
+  for minor in 3.11 3.12 3.10; do
+    if sudo dnf install -y \
+        "python${minor}" \
+        "python${minor}-pip" \
+        "python${minor}-devel"; then
+      SYSTEM_PYTHON="python${minor}"
+      break
+    fi
+  done
+
+  [[ -n "$SYSTEM_PYTHON" ]] || sudo dnf install -y python3 python3-pip python3-devel
+
   sudo dnf install -y \
-    "python${PY_MINOR}" \
-    "python${PY_MINOR}-pip" \
-    "python${PY_MINOR}-devel" \
     gcc \
     gcc-c++ \
     mesa-libGL \
@@ -129,30 +198,24 @@ install_dnf_packages() {
 }
 
 install_pacman_packages() {
-  if pacman -Si "python${PY_MINOR}" >/dev/null 2>&1; then
-    info "installing Python ${PY_MINOR} and system packages (sudo required)..."
-    sudo pacman -Sy --needed \
-      "python${PY_MINOR}" \
-      base-devel \
-      mesa \
-      libxkbcommon-x11 \
-      fontconfig \
-      dbus
-    SYSTEM_PYTHON="python${PY_MINOR}"
-    return 0
-  fi
-
-  die "Arch Linux does not provide Python ${PY_MINOR} in the official repos. Use an Ubuntu/Debian-based booth image, or install Python ${PY_MINOR} manually and re-run."
+  info "installing Python and system packages (sudo required)..."
+  sudo pacman -Sy --needed \
+    python \
+    base-devel \
+    mesa \
+    libxkbcommon-x11 \
+    fontconfig \
+    dbus
+  SYSTEM_PYTHON="python3"
 }
 
 ensure_system_python() {
-  if command -v "$SYSTEM_PYTHON" >/dev/null 2>&1 \
-      && "$SYSTEM_PYTHON" -c 'import venv' >/dev/null 2>&1; then
+  if SYSTEM_PYTHON="$(find_usable_python)"; then
     info "found $($SYSTEM_PYTHON --version)"
     return 0
   fi
 
-  info "Python ${PY_MINOR} is not installed"
+  info "no suitable Python ${MIN_PY_MAJOR}.${MIN_PY_MINOR}+ with venv found; installing"
   if command -v apt-get >/dev/null 2>&1; then
     install_apt_packages
   elif command -v dnf >/dev/null 2>&1; then
@@ -160,13 +223,11 @@ ensure_system_python() {
   elif command -v pacman >/dev/null 2>&1; then
     install_pacman_packages
   else
-    die "unsupported package manager; install Python ${PY_MINOR} manually and re-run"
+    die "unsupported package manager; install Python ${MIN_PY_MAJOR}.${MIN_PY_MINOR}+ manually and re-run"
   fi
 
-  command -v "$SYSTEM_PYTHON" >/dev/null 2>&1 \
-    || die "Python ${PY_MINOR} installation failed"
-  "$SYSTEM_PYTHON" -c 'import venv' >/dev/null 2>&1 \
-    || die "python${PY_MINOR}-venv is not available after install"
+  SYSTEM_PYTHON="$(find_usable_python)" \
+    || die "could not find Python ${MIN_PY_MAJOR}.${MIN_PY_MINOR}+ with venv after package install"
 
   info "using $($SYSTEM_PYTHON --version)"
 }
@@ -190,8 +251,8 @@ ensure_venv() {
     create_venv
   else
     info "using existing virtual environment at $VENV_DIR"
-    if ! "$PYTHON" -c 'import sys; assert sys.version_info[:2] == (3, 11)' >/dev/null 2>&1; then
-      info "existing venv is not Python 3.11; recreating"
+    if ! python_version_ok "$PYTHON"; then
+      info "existing venv is older than Python ${MIN_PY_MAJOR}.${MIN_PY_MINOR}; recreating"
       rm -rf "$VENV_DIR"
       create_venv
     fi
@@ -215,13 +276,13 @@ install_requirements() {
 
 verify_install() {
   info "verifying Python version and imports"
-  "$PYTHON" - <<'PY'
+  "$PYTHON" - <<PY
 import importlib
 import sys
 
-if sys.version_info[:2] != (3, 11):
+if sys.version_info[:2] < (${MIN_PY_MAJOR}, ${MIN_PY_MINOR}):
     print(
-        f"verification failed: expected Python 3.11, got {sys.version.split()[0]}",
+        f"verification failed: expected Python >= ${MIN_PY_MAJOR}.${MIN_PY_MINOR}, got {sys.version.split()[0]}",
         file=sys.stderr,
     )
     sys.exit(1)
