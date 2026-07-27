@@ -34,7 +34,14 @@ python_version_ok() {
 
 python_has_venv() {
   local bin="$1"
-  "$bin" -c 'import venv' >/dev/null 2>&1
+  # On Debian/Ubuntu/Mint, `import venv` can succeed while ensurepip is missing
+  # until the matching python3.x-venv package is installed.
+  "$bin" -c 'import venv, ensurepip' >/dev/null 2>&1
+}
+
+python_minor_version() {
+  local bin="$1"
+  "$bin" -c 'import sys; print(f"{sys.version_info[0]}.{sys.version_info[1]}")'
 }
 
 find_usable_python() {
@@ -47,6 +54,22 @@ find_usable_python() {
       return 0
     fi
   done
+  return 1
+}
+
+install_venv_for_python() {
+  local bin="$1"
+  local minor
+  minor="$(python_minor_version "$bin")" || return 1
+
+  if command -v apt-get >/dev/null 2>&1; then
+    info "installing python${minor}-venv (required for virtualenvs on Mint/Ubuntu)"
+    sudo apt-get update
+    sudo apt-get install -y "python${minor}-venv" "python${minor}-dev" || \
+      sudo apt-get install -y python3-venv python3-dev
+    return 0
+  fi
+
   return 1
 }
 
@@ -215,6 +238,22 @@ ensure_system_python() {
     return 0
   fi
 
+  # Common Mint/Ubuntu case: python3.12 is installed, but python3.12-venv is not.
+  local candidate
+  for candidate in "${PREFERRED_PYTHONS[@]}"; do
+    if command -v "$candidate" >/dev/null 2>&1 \
+        && python_version_ok "$candidate" \
+        && ! python_has_venv "$candidate"; then
+      info "found $candidate but ensurepip/venv support is missing"
+      install_venv_for_python "$candidate" || true
+      if python_has_venv "$candidate"; then
+        SYSTEM_PYTHON="$candidate"
+        info "using $($SYSTEM_PYTHON --version)"
+        return 0
+      fi
+    fi
+  done
+
   info "no suitable Python ${MIN_PY_MAJOR}.${MIN_PY_MINOR}+ with venv found; installing"
   if command -v apt-get >/dev/null 2>&1; then
     install_apt_packages
@@ -234,11 +273,22 @@ ensure_system_python() {
 
 create_venv() {
   info "creating virtual environment at $VENV_DIR with $SYSTEM_PYTHON"
-  if "$SYSTEM_PYTHON" -m venv --help 2>/dev/null | grep -q -- '--upgrade-deps'; then
-    "$SYSTEM_PYTHON" -m venv --upgrade-deps "$VENV_DIR"
-  else
-    "$SYSTEM_PYTHON" -m venv "$VENV_DIR"
+  rm -rf "$VENV_DIR"
+  if ! "$SYSTEM_PYTHON" -m venv --upgrade-deps "$VENV_DIR" 2>/dev/null \
+      && ! "$SYSTEM_PYTHON" -m venv "$VENV_DIR"; then
+    rm -rf "$VENV_DIR"
+    info "venv creation failed; trying to install the matching python*-venv package"
+    install_venv_for_python "$SYSTEM_PYTHON" \
+      || die "failed to install venv support for $SYSTEM_PYTHON"
+    python_has_venv "$SYSTEM_PYTHON" \
+      || die "ensurepip still missing for $SYSTEM_PYTHON after installing venv package"
+    if "$SYSTEM_PYTHON" -m venv --help 2>/dev/null | grep -q -- '--upgrade-deps'; then
+      "$SYSTEM_PYTHON" -m venv --upgrade-deps "$VENV_DIR"
+    else
+      "$SYSTEM_PYTHON" -m venv "$VENV_DIR"
+    fi
   fi
+  [[ -x "$PYTHON" ]] || die "virtual environment was not created at $VENV_DIR"
 }
 
 ensure_venv() {
