@@ -326,6 +326,12 @@ install_requirements() {
   info "upgrading pip"
   "$PYTHON" -m pip install --upgrade pip wheel setuptools
 
+  # opencv-python ships Qt plugins that break PySide6; always prefer headless.
+  if "$PYTHON" -m pip show opencv-python >/dev/null 2>&1; then
+    info "removing opencv-python so opencv-python-headless can take over"
+    "$PYTHON" -m pip uninstall -y opencv-python
+  fi
+
   info "installing Python packages from requirements-linux.txt"
   "$PYTHON" -m pip install -r "$REQ_FILE"
 }
