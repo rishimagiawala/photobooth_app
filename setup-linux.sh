@@ -261,6 +261,11 @@ main() {
   verify_install
   configure_device_groups
 
+  if [[ "${PHOTOBOOTH_NESTED:-}" == "1" ]]; then
+    info "Python environment is ready"
+    return
+  fi
+
   echo
   echo "Setup complete."
   echo
@@ -270,9 +275,9 @@ main() {
   echo "Run the app:"
   echo "  python app.py"
   echo
-  echo "Optional booth hardware setup (printing):"
-  echo "  sudo apt install cups cups-client printer-driver-gutenprint v4l-utils"
-  echo "See README.md for printer and card reader config."
+  echo "Finish a booth PC with printer drivers, autostart, and auto-login:"
+  echo "  bash \"$ROOT/install-linux.sh\""
+  echo
 }
 
 main "$@"
