@@ -3,13 +3,10 @@
 #
 # Installs the Python app, printer drivers, login autostart, and auto-login.
 #
-# From the project folder, run either:
+# From the project folder, run:
 #   bash install-linux.sh
-#   sudo bash install-linux.sh
 #
-# If you start it with sudo, it switches back to your login user so the
-# app, venv, and autostart land in your home — not root's. Child steps
-# will sudo again when they need it (your password is usually still cached).
+# No chmod or manual cleanup required. You will be prompted for sudo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -65,11 +62,7 @@ if [[ "$(uname -s)" != "Linux" ]]; then
 fi
 
 if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-  if [[ -z "${SUDO_USER:-}" || "$SUDO_USER" == "root" ]]; then
-    die "don't run this as root. Use: sudo bash install-linux.sh  (from your booth user account)"
-  fi
-  info "started with sudo; continuing as $SUDO_USER so files go in the right home"
-  exec sudo -u "$SUDO_USER" -H bash "$ROOT/install-linux.sh" "$@"
+  die "run this as your normal user, not with sudo. The script will ask for sudo when it needs it."
 fi
 
 if venv_is_broken; then
